@@ -1,17 +1,15 @@
 """
     mutable struct WaveTank
-
-
 """
 Base.@kwdef mutable struct WaveTank
     # entities
-    _freesurface::Domain    = Domain()
-    pml_freesurface::Domain = Domain()
-    _bottom::Domain         = Domain()
-    pml_bottom::Domain      = Domain()
-    obstacles::Domain       = Domain()
+    freesurface::Domain    = Domain()
+    bottom::Domain         = Domain()
+    obstacles::Domain      = Domain()
     # parameters
     parameters::Parameters   = Parameters()
+    # pml change of variables
+    pml_func                 = nothing
     # discretized fields
     mesh                     = nothing
     quad                     = nothing
@@ -21,34 +19,18 @@ Base.@kwdef mutable struct WaveTank
     D                        = nothing
 end
 
-
-function freesurface(tank::WaveTank;include_pml=true)
-    if include_pml
-        return tank._freesurface ∪ tank.pml_freesurface
-    else
-        return tank._freesurface
-    end
-end
-
-pml_freesurface(tank::WaveTank) = tank.pml_freesurface
-
-function bottom(tank::WaveTank;include_pml=true)
-    if include_pml
-        return tank._bottom ∪ tank.pml_bottom
-    else
-        return tank._bottom
-    end
-end
-
-obstacles(tank::WaveTank) = tank.obstacles
+freesurface(tank::WaveTank) = tank.freesurface
+bottom(tank::WaveTank)      = tank.bottom
+obstacles(tank::WaveTank)   = tank.obstacles
+parameters(t::WaveTank)     = t.parameters
+pml(t::WaveTank)            = t.pml_func
+mesh(t::WaveTank)           = t.mesh
+quadrature(t::WaveTank)     = t.quad
 
 function domain(tank::WaveTank)
-    freesurface(tank;include_pml=true) ∪ bottom(tank;include_pml=true) ∪ obstacles(tank)
+    freesurface(tank) ∪ bottom(tank) ∪ obstacles(tank)
 end
 
-parameters(t::WaveTank) = t.parameters
-mesh(t::WaveTank)       = t.mesh
-quadrature(t::WaveTank) = t.quad
 depth(t::WaveTank)        = t |> parameters |> depth
 frequency(tank::WaveTank) = tank |> parameters |> frequency
 gravity(tank::WaveTank)   = tank |> parameters |> gravity
@@ -56,63 +38,69 @@ impedance(tank::WaveTank) = tank |> parameters |> impedance
 wavenumber(t::WaveTank)   = t |> parameters |> wavenumber
 wavelength(t::WaveTank)   = t |> parameters |> wavelength
 
-# helper functions to generate the domain
-function add_free_surface!(wavetank::WaveTank,a)
-    Γf      = Domain(ParametricSurfaces.line(Point2D(a, 0), Point2D(-a, 0)))
-    _add_free_surface!(wavetank,Γf,a)
-    return wavetank
-end
-function _add_free_surface!(wavetank::WaveTank,Γf::Domain,a)
-    p       = parameters(wavetank)
-    p.sides = a
-    isempty(wavetank._freesurface) || (@warn "replacing freesurface of wavetank")
-    wavetank._freesurface = Γf
-    return wavetank
-end
-
-function add_flat_bottom!(wavetank,d)
-    @assert d > 0 "depth must be positive: got d=$d"
+function set_depth!(wavetank::WaveTank,d)
     p = parameters(wavetank)
-    a = p.sides
-    l = ParametricSurfaces.line(Point2D(-a, -d), Point2D(a, -d))
-    Γb = Domain(l)
-    add_bottom!(Γb, d, wavetank)
-end
-
-"""
-    add_bottom!(wavetank,Γb,d)
-
-Set the bottom of `wavetank` to `Γb`, which is assumed to be of constant depth
-`d` as the horizontal variables `|𝐱| → ∞`.
-"""
-function add_bottom!(Γb::Domain, d, wavetank=WAVETANK)
-    p       = parameters(wavetank)
     p.depth = d
-    isempty(wavetank._bottom) || (@warn "replacing bottom of wavetank")
-    wavetank._bottom = Γb
-    return Γb
+    return wavetank
 end
 
-function add_obstacle!(wavetank,obs::AbstractEntity)
-    push!(wavetank.obstacles, obs)
+# helper functions to generate the domain
+"""
+    add_freesurface!(wavetank,Γf::Domain)
+
+Append `Γf` to the free-surface of `wavetank`.
+"""
+function add_freesurface!(wavetank::WaveTank,Γf::Domain)
+    append!(freesurface(wavetank),Γf)
+    return wavetank
 end
 
-function add_pml_layer!(wavetank,l)
-    p   = parameters(wavetank)
-    a   = p.sides
-    d   = p.depth
-    # free surface pml
-    layer_top_right = ParametricSurfaces.line(Point2D(a+l, 0), Point2D(a, 0))
-    layer_top_left  = ParametricSurfaces.line(Point2D(-a, 0), Point2D(-a-l, 0))
-    isempty(wavetank.pml_freesurface) || (@warn "replacing pml layer on freesurface")
-    wavetank.pml_freesurface = Domain([layer_top_left,layer_top_right])
-    # bottom pml (if needed)
-    if d < Inf
-        layer_bottom_right   = ParametricSurfaces.line(Point2D(xr+l, -d), Point2D(xr, -d))
-        layer_bottom_left    = ParametricSurfaces.line(Point2D(xl, -d), Point2D(xl-l, -d))
-        isempty(wavetank.pml_bottom) || (@warn "replacing pml layer on bottom")
-        wavetank.pml_bottom  = Domain([layer_bottom_left,layer_bottom_right])
-    end
+function add_freesurface!(wavetank::WaveTank,a::Number,b::Number)
+    @assert a < b
+    Γf = Domain(ParametricSurfaces.line(Point2D(b, 0), Point2D(a, 0)))
+    add_freesurface!(wavetank,Γf)
+end
+
+"""
+    add_bottom!(wavetank,Γb)
+
+Append `Γb` to `bottom(wavetank)`.
+"""
+function add_bottom!(wavetank, Γb::Domain)
+    # TODO: check that endpoints of bottom coincide with depth?
+    append!(bottom(wavetank),Γb)
+    return wavetank
+end
+function add_bottom!(wavetank, a::Number,b::Number)
+    @assert a < b
+    d = depth(wavetank)
+    msg = """depth of `wavetank` must be finite.
+    Call `set_depth!(tank,d)` to fix the depth"""
+    @assert isfinite(d) msg
+    Γb = Domain(ParametricSurfaces.line(Point2D(a, -d), Point2D(b, -d)))
+    add_bottom!(wavetank,Γb)
+    return wavetank
+end
+
+function add_pml!(wavetank,pml::AbstractPML)
+    wavetank.pml_func = pml
+end
+function add_pml!(wavetank;a,θ)
+    τ = OrthogonalLinearPML(;a,θ)
+    # τ = OrthogonalQuadraticPML(;a,θ)
+    add_pml!(wavetank,τ)
+end
+
+function add_orthogonal_pml!(wavetank;a,θ)
+    τ = OrthogonalLinearPML(;a,θ)
+    add_pml!(wavetank,τ)
+end
+
+"""
+    add_obstacles!(wavetank,Γ::Domain)
+"""
+function add_obstacles!(wavetank,Γ::Domain)
+    append!(obstacles(wavetank),Γ)
     return wavetank
 end
 
@@ -127,10 +115,12 @@ function discretize!(tank::WaveTank;meshsize,order)
     # assemble lazy integral operators
     @info "creating lazy integral operators"
     p       = parameters(tank)
-    a       = p.sides
-    θ       = p.θ
-    τ       = OrthogonalLinearUniaxialPML(;a,θ)
-    op      = LaplacePML(;dim=2,τ)
+    τ       = pml(tank)
+    if isnothing(τ)
+        op      = Laplace(;dim=2)
+    else
+        op      = LaplacePML(;dim=2,τ)
+    end
     Sop     = SingleLayerOperator(op,quad)
     Dop     = DoubleLayerOperator(op,quad)
     tank.Sop = Sop
@@ -156,19 +146,19 @@ end
 function solve(tank::WaveTank,f::AbstractVector)
     p       = parameters(tank)
     quad    = quadrature(tank)
-    a       = p.sides
-    θ       = p.θ
+    τ       = pml(tank)
     dofs    = quadrature(tank).dofs
     k       = impedance(tank)
-    J_diag  = Diagonal([abs(dof.coords[1]) < a ? one(ComplexF64) : exp(im*θ) for dof in dofs])
+    J_diag  = Diagonal([jacobian_det(τ,dof) for dof in dofs])
     @assert J_diag*f ≈ f "source term must vanish inside the PML"
-    # compute L = 0.5*|J| + D - ω^2/g * Sfs
     S,D = tank.S, tank.D
+    rhs = S*f
+    # compute L = 0.5*|J|^{-1} + D - ω^2/g * Sfs
     L   = 0.5*inv(J_diag) + D
-    Γ   = freesurface(tank;include_pml=true)
+    Γ   = freesurface(tank)
     Is  = Nystrom.dom2dof(quad,Γ) # index of dofs on free surface
     @. L[:,Is] = L[:,Is] - k*S[:,Is]
-    rhs = S*f
+    # ϕ   = (L*J_diag)\rhs
     σ   = L\rhs
     ϕ   = inv(J_diag)*σ
     return Density(ϕ,quad)
@@ -179,6 +169,24 @@ function solve(tank::WaveTank,f::Function)
     solve(tank,[f(dof) for dof in quad.dofs])
 end
 
+# incident wave
+function plane_wave(tank;θ=0)
+    d = depth(tank)
+    β = wavenumber(tank)
+    A = 1/cosh(β*d) # normalization constant
+    ϕᵢ  = (dof) -> begin
+        x = coords(dof)
+        A*exp(im*β*x[1])*cosh(β*(x[2]+d))
+    end
+    dϕᵢ = (dof) -> begin
+        x = coords(dof)
+        n = normal(dof)
+        A*β*exp(im*β*x[1]) * (im*cosh(β*(x[2]+d))*n[1] + sinh(β*(x[2]+d)*n[2]))
+    end
+    return ϕᵢ,dϕᵢ
+end
+
+
 # plotting
 
 @recipe function f(tank::WaveTank; meshsize=0.1)
@@ -186,22 +194,16 @@ end
         lc := :blue
         label := ""
         meshsize := meshsize
-        tank._freesurface
-    end
-    @series begin
-        lc := :lightblue
-        label := ""
-        meshsize := meshsize
-        tank.pml_freesurface
+        tank.freesurface
     end
     @series begin
         lc := :black
-        label := "bottom"
+        label := ""
         meshsize := meshsize
-        tank._bottom
+        tank.bottom
     end
     @series begin
-        label := "obstacles"
+        label := ""
         lc := :red
         meshsize := meshsize
         tank.obstacles

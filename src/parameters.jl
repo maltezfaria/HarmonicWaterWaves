@@ -1,9 +1,7 @@
 Base.@kwdef mutable struct Parameters
     frequency::Float64 = sqrt(π) # frequency
     gravity::Float64   = 1  #
-    θ::Float64         = π / 4  # pml parameter
     depth::Float64     = Inf
-    sides::Float64     = 0
 end
 
 frequency(p::Parameters) = p.frequency
