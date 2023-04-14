@@ -17,14 +17,29 @@ import WavePropBase:
     svector,
     jacobian,
     AbstractPDE,
+    SingleLayerKernel,
+    DoubleLayerKernel,
     default_kernel_eltype,
     default_density_eltype,
+    ambient_dimension,
+    notimplemented,
+    normal,
+    line,
+    Point2D,
+    meshgen,
+    NystromMesh,
+    Laplace,
+    SingleLayerOperator,
+    DoubleLayerOperator,
+    hcubature_correction,
+    dom2qtags,
+    NystromDensity
 
 
 
 include("pml.jl")
-# include("parameters.jl")
-# include("wavetank.jl")
+include("parameters.jl")
+include("wavetank.jl")
 
 # export
 

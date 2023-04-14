@@ -6,47 +6,41 @@ c*(x+a)` for `x<-a`. For `-a ≤ x ≤ a`, `x̃ = x`.
 """
 struct OrthogonalLinearPML
     a::Float64
-    c::ComplexF64
+    # c::ComplexF64
+    c::Float64
 end
 
 function OrthogonalLinearPML(;a,θ)
-    OrthogonalLinearPML(a,exp(im*θ))
+    # OrthogonalLinearPML(a,exp(im*θ))
+    OrthogonalLinearPML(a,sin(θ))
 end
 
 function (f::OrthogonalLinearPML)(dof)
-    x   = WPB.coords(dof)
+    x   = coords(dof)
     N   = length(x)
     a,c = f.a,f.c
-    WPB.svector(N) do d
+    svector(N) do d
         xd = x[d]
         if d == N || abs(xd) <= a
-            Complex(xd)
+            ComplexF64(xd)
         elseif xd > a
-            a + (xd-a)*c
+            # a + (xd-a)*c
+            ComplexF64(xd + (xd-a)*c*im)
         else
-            -a + (xd+a)*c
+            # -a + (xd+a)*c
+            ComplexF64(xd + (xd+a)*c*im)
         end
     end
 end
 
-function jacobian(f::OrthogonalLinearPML,dof)
-    a,c = f.a,f.c
-    x = WPB.coords(dof)
-    N = length(x)
-    diag = svector(N) do d
-        xd = x[d]
-        (d == N || xd <= a) ? one(c) : c
-    end
-    Diagonal(diag)
-end
-
 function jacobian_det(f::OrthogonalLinearPML,dof)
-    x = WPB.coords(dof)
+    x = coords(dof)
     N = length(x)
     a,c = f.a,f.c
     prod(1:N-1) do d
         xd = x[d]
-        abs(xd) > a ? c : one(c)
+        # abs(xd) > a ? c : one(c)
+        abs(xd) > a ? 1+im*c : one(ComplexF64)
     end
 end
 
@@ -60,10 +54,10 @@ function OrthogonalQuadraticPML(;a,θ)
 end
 
 function (f::OrthogonalQuadraticPML)(dof)
-    x   = WPB.coords(dof)
+    x   = coords(dof)
     N   = length(x)
     a,c = f.a,f.c
-    WPB.svector(N) do d
+    svector(N) do d
         xd = x[d]
         if d == N || abs(xd) <= a
             Complex(xd)
@@ -77,9 +71,9 @@ end
 
 function jacobian(f::OrthogonalQuadraticPML,dof)
     a,c = f.a,f.c
-    x = WPB.coords(dof)
+    x = coords(dof)
     N = length(x)
-    diag = WPB.svector(N) do d
+    diag = svector(N) do d
         xd = x[d]
         (d == N || xd <= a) ? one(c) : xd > a ? 2*(xd-a)*c : -2*(xd-a)*c
     end
@@ -87,7 +81,7 @@ function jacobian(f::OrthogonalQuadraticPML,dof)
 end
 
 function jacobian_det(f::OrthogonalQuadraticPML,dof)
-    x = WPB.coords(dof)
+    x = coords(dof)
     N = length(x)
     a,c = f.a,f.c
     prod(1:N-1) do d
@@ -96,7 +90,7 @@ function jacobian_det(f::OrthogonalQuadraticPML,dof)
     end
 end
 
-struct LaplacePML{N,S} <: WPB.AbstractPDE{N}
+struct LaplacePML{N,S} <: AbstractPDE{N}
     complex_strecthing::S
 end
 
@@ -104,17 +98,17 @@ LaplacePML(;dim=2,τ) = LaplacePML{dim,typeof(τ)}(τ)
 
 getname(::LaplacePML) = "LaplacePML"
 
-WPB.default_kernel_eltype(::LaplacePML)  = ComplexF64
-WPB.default_density_eltype(::LaplacePML) = ComplexF64
+default_kernel_eltype(::LaplacePML)  = ComplexF64
+default_density_eltype(::LaplacePML) = ComplexF64
 
 complex_strecthing(op::LaplacePML) = op.complex_strecthing
 
 _log(z::Complex) = isreal(z) ? log(real(z)) : log(z)
 
-function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplacePML}
-    x = WPB.coords(target)
-    y = WPB.coords(source)
-    N = WPB.ambient_dimension(SL.pde)
+function (SL::SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplacePML}
+    x = coords(target)
+    y = coords(source)
+    N = ambient_dimension(SL.pde)
     τ = SL.pde.complex_strecthing
     x̃ = τ(x)
     ỹ = τ(y)
@@ -126,13 +120,13 @@ function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:Laplace
     elseif N==3
         return 1/(4π)/d
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
 
-function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplacePML}
-    x,y,ny = WPB.coords(target), WPB.coords(source), WPB.normal(source)
-    N  = WPB.ambient_dimension(DL.pde)
+function (DL::DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplacePML}
+    x,y,ny = coords(target), coords(source), normal(source)
+    N  = ambient_dimension(DL.pde)
     τ  = DL.pde.complex_strecthing
     x̃  = τ(x)
     ỹ  = τ(y)
@@ -144,11 +138,11 @@ function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplaceP
     elseif N==3
         return 1/(4π)/(d^3) * transpose(r)*ny
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
 
-struct LaplaceSymPML{N,S} <: WPB.AbstractPDE{N}
+struct LaplaceSymPML{N,S} <: AbstractPDE{N}
     complex_strecthing::S
 end
 
@@ -156,15 +150,15 @@ LaplaceSymPML(;dim=2,τ) = LaplaceSymPML{dim,typeof(τ)}(τ)
 
 getname(::LaplaceSymPML) = "LaplaceSymPML"
 
-WPB.default_kernel_eltype(::LaplaceSymPML)  = ComplexF64
-WPB.default_density_eltype(::LaplaceSymPML) = ComplexF64
+default_kernel_eltype(::LaplaceSymPML)  = ComplexF64
+default_density_eltype(::LaplaceSymPML) = ComplexF64
 
 complex_strecthing(op::LaplaceSymPML) = op.complex_strecthing
 
-function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplaceSymPML}
-    x = WPB.coords(target)
-    y = WPB.coords(source)
-    N = WPB.ambient_dimension(SL.pde)
+function (SL::SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplaceSymPML}
+    x = coords(target)
+    y = coords(source)
+    N = ambient_dimension(SL.pde)
     τ = SL.pde.complex_strecthing
     x̃ = τ(x)
     ỹ = τ(y)
@@ -179,13 +173,13 @@ function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:Laplace
     elseif N==3
         return 1/(4π)/d
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
 
-function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplaceSymPML}
-    x,y,ny = WPB>coords(target), WPB.coords(source), WPB.normal(source)
-    N  = WPB.ambient_dimension(DL.pde)
+function (DL::DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplaceSymPML}
+    x,y,ny = coords(target), coords(source), normal(source)
+    N  = ambient_dimension(DL.pde)
     τ  = DL.pde.complex_strecthing
     x̃  = τ(x)
     ỹ  = τ(y)
@@ -200,7 +194,7 @@ function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplaceS
     elseif N==3
         return 1/(4π)/(d^3) * transpose(r)*ny
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
 
@@ -208,21 +202,21 @@ end
 #=
     Infinite depth two-dimensional water wave Gree function
 =#
-struct InfiniteDepthWaterWaves{N,S} <: WPB.AbstractPDE{N}
+struct InfiniteDepthWaterWaves{N,S} <: AbstractPDE{N}
     k::S # ω²/g
 end
 
 InfiniteDepthWaterWaves(;k,dim=2) = InfiniteDepthWaterWaves{dim,typeof(k)}(k)
 
-WPB.default_kernel_eltype(::InfiniteDepthWaterWaves)  = ComplexF64
-WPB.default_density_eltype(::InfiniteDepthWaterWaves) = ComplexF64
+default_kernel_eltype(::InfiniteDepthWaterWaves)  = ComplexF64
+default_density_eltype(::InfiniteDepthWaterWaves) = ComplexF64
 
-function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:InfiniteDepthWaterWaves}
+function (SL::SingleLayerKernel{T,S})(target,source)::T  where {T,S<:InfiniteDepthWaterWaves}
     N = 2
     k = SL.pde.k
-    x = WPB.coords(target)
+    x = coords(target)
     x̄ = setindex(x,-x[N],N) # image across surface
-    y = WPB.coords(source)
+    y = coords(source)
     r = y-x
     r̄ = y-x̄
     d = norm(r)
@@ -234,22 +228,22 @@ function (SL::WPB.SingleLayerKernel{T,S})(target,source)::T  where {T,S<:Infinit
         x2,y2 = -x2,-y2
         return -1/(2π)*log(d) + 1/(2π)*log(d̄) + im*exp(-k*(y2+x2))*cos(k*(y1-x1)) - exp(-k*(y2+x2))/(2π)*(exp(im*k*(y1-x1))*SpecialFunctions.expinti(k*((y2+x2) - im*(y1-x1))) + exp(-im*k*(y1-x1))*SpecialFunctions.expinti(k*((y2+x2) + im*(y1-x1))))
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
 
-function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T  where {T,S<:InfiniteDepthWaterWaves}
+function (DL::DoubleLayerKernel{T,S})(target,source)::T  where {T,S<:InfiniteDepthWaterWaves}
     N = 2
     k = DL.pde.k
-    x = WPB.coords(target)
+    x = coords(target)
     x̄ = setindex(x,-x[N],N) # image across surface
-    y = WPB.coords(source)
+    y = coords(source)
     r = x-y
     r̄ = x̄-y
     d = norm(r)
     d̄ = norm(r̄)
     d==0 && (return zero(T))
-    ny = WPB.normal(source)
+    ny = normal(source)
     if N==2
         x1,x2 = x
         y1,y2 = y
@@ -262,6 +256,6 @@ function (DL::WPB.DoubleLayerKernel{T,S})(target,source)::T  where {T,S<:Infinit
                 (nt*SVector(-im,-1))*exp(im*k*v1)*SpecialFunctions.expinti(k*(v2-im*v1)) + (nt*SVector(im,-1))*exp(-im*k*v1)*SpecialFunctions.expinti(k*(v2+im*v1))
             ))
     else
-        WPB.notimplemented()
+        notimplemented()
     end
 end
