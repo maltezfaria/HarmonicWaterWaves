@@ -11,6 +11,8 @@
 \usepackage{booktabs}
 \usepackage{subcaption}
 \usepackage{esvect}
+\usepackage{tikz}
+\definecolor{vertB}{RGB}{20, 148, 20}
 \usepackage{multirow}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -117,91 +119,96 @@
 
 Solving partial differential equations (PDEs) on unbounded domains poses
 additional challenges from both a theoretical and numerical point of view.
-Theoretically, one is required to impose appropriate conditions at infinity so
-as to guarantee the existence of a unique solution; when the underlying PDE
-comes from the modeling of the physical world, additional care must be taken to
-also ensure the recovered (unique) solution is the ``physically relevant'' one.
-The numerical challenges, on the other hand, stem from the fact that the
-discretization scheme should incorporate information about the boundary
-conditions at infinity, also called radiation condition; this can be done
-directly, by e.g. expanding the solution in a basis which satisfy the radiation
-condition \cite{?}, or indirectly by truncating the domain to a finite size and
-imposing instead a carefully chosen boundary condition on the artificial
-boundaries of the truncated domain \cite{?}.
+Theoretically, one is required to impose appropriate conditions at infinity to
+guarantee uniqueness of solutions; when the underlying PDE comes from the
+modeling of the physical world, additional care must be taken to also ensure the
+recovered (unique) solution is the ``physically relevant'' one. The numerical
+challenges, on the other hand, stem from the fact that the discretization scheme
+should incorporate information about the boundary conditions at infinity, also
+called radiation condition; this can be done directly, by e.g. expanding the
+solution in a basis which satisfy the radiation condition, or indirectly by
+truncating the domain to a finite size and imposing instead a carefully chosen
+boundary condition on the artificial boundaries of the truncated domain.
 
 In the case of volume discretization methods such as finite difference and
 finite elements, a particular class of truncation techniques which enjoys great
 popularity due to its accuracy and simplicity is the Perfectly Matched Layers
-(PMLs) method \cite{?}. Loosely speaking, the method consists of solving for the
-analytic extension of the sought solution which decays exponentially at
-infinity. The decay rate of the analytic extension then facilitates the
-truncation of the domain upon discretization. On the physical (i.e. real)
-domain, PMLs can be reinterpreted as surrounding the computational region by a
-material layer, not necessarily physical, which absorbs but does not reflect
-incoming waves. A key difference between PMLs and \emph{ad hoc} absorbing
-material methods stem from the fact that the PML absorbing material is
-``perfect'' in the sense that it is reflectionless at the continuous level (i.e.
-before discretization).
+(PMLs) method. Loosely speaking, the method consists of solving for the analytic
+extension of the sought solution which decays exponentially at infinity. The
+decay rate of the analytic extension then facilitates the truncation of the
+domain upon discretization. On the physical (i.e. real) domain, PMLs can be
+reinterpreted as surrounding the computational region by a material layer, not
+necessarily physical, which absorbs but does not reflect incoming waves. A key
+difference between PMLs and \emph{ad hoc} absorbing material methods stem from
+the fact that the PML absorbing material is ``perfect'' in the sense that it is
+reflectionless at the continuous level (i.e. before discretization).
 
 An alternative to volume discretization methods are boundary integral equation
-methods (BIEs), which rely on the use of a Green function to recast the PDE in
-terms of integral operators over the interfaces where the medium changes
-property. For piece-wise homogeneous media, this reduces the PDE to integral
-equations posed at the interface between the different media. Because boundary
-integral methods represent the solution as a sum of fundamental solutions which
-satisfy the radiation boundary condition, no domain truncation technique is
-required when the interfaces are bounded. This is a well-known advantage of
-boundary integral methods for scattering problems. There are interesting cases,
-however, where such interfaces are better modeled as infinite. Examples include
-the scattering of an object near the ground \cite{}, the propagation of elastic
-waves under the surface of the earth \cite{}, and wave-guides \cite{}. In such
+methods, which rely on the use of a Green function to recast the PDE in terms of
+integral operators over the interfaces where the medium changes property. For
+piece-wise homogeneous media, this reduces the PDE to integral equations posed
+at the interface between the different media. Because boundary integral methods
+represent the solution as a sum of fundamental solutions which satisfy the
+radiation boundary condition, no domain truncation technique is required when
+the interfaces are bounded. This is a well-known advantage of boundary integral
+methods for scattering problems. There are interesting cases, however, where
+such interfaces are better modeled as infinite. Examples include the scattering
+of an object near the ground, the propagation of elastic waves under the surface
+of the earth, wave-guides, and the water-waves problem described below. In such
 cases a truncation technique is required, at least in the direction parallel to
-the infinite interfaces, so as to reduce the problem to a finite subdomain where
-the equations can be discretized.
+the infinite interfaces, to reduce the problem to a finite subdomain where the
+equations can be discretized.
 
 In order to handle infinite interfaces in a boundary integral equation context,
-a few options are available. For relatively simple geometries, one can construct
-a problem specific Greens function which incorporates the imposed boundary
-condition on all but a bounded portion of the interface, thus reducing the
-problem again to integrals over bounded curves/surfaces. This has the advantage
-of being conceptually simple provided such problem-specific Greens function can
-be efficiently computed. Unfortunately, for all but the simplest geometries, the
-representation of the problem specific Greens function involves challenging
-integrals which must be approximated numerically \cite{}. Alternatives which
-rely instead on the use of the free-space Greens function, readily available for
-many PDEs of physical relevance, have also been developed. For example in
-\cite{bruno2016windowed} a high-order method called the Windowed-Green function
-(WGF) was introduced in order to truncate the integrals stemming from the
-boundary integral representation of the unbounded interfaces. More recently,
-\cite{lu2018perfectly} proposed a technique based on combining perfectly matched
-layers and a boundary integral representation on a certain truncated domain in
-the context of Helmholtz scattering problems. Due to the exponential decay of
-the Helmholtz Green function on the complex-scaled PML layer, the kernels of the
-integral operators over the infinite interfaces become exponentially small,
-allowing for an efficient truncation with errors that decay exponentially
-respect to a truncation parameter $\ell$ controlling the PML length. It is worth
-mentioning the naive approach of simply truncating the domain far enough from
-the region of interest is rather unsatisfactory, specially for non-dissipative
-PDEs, due to the slow (algebraic) decay of the Greens function; in fact, as we
-will argue in this paper, such an abrupt truncation may not even converge in the
-zero-frequency regime, wherein the free-space Green function is no longer
-decaying.
+a few options are available. For relatively simple geometries and boundary
+conditions, one can construct a problem specific Greens function which
+incorporates the boundary condition on all but a bounded portion of the
+interface, thus reducing the problem again to integrals over bounded
+curves/surfaces. This has the advantage of being conceptually simple provided
+such problem-specific Greens function can be efficiently computed.
+Unfortunately, for all but the simplest geometries, the representation of the
+problem specific Greens function involves challenging integrals which must be
+approximated numerically. Alternatives which rely instead on the use of the
+free-space Greens function, readily available for many PDEs of physical
+relevance, have also been developed. In \cite{perez2017windowed} a high-order
+method called the Windowed-Green function (WGF) was introduced in order to
+truncate the integrals stemming from the boundary integral representation of the
+unbounded interfaces in the context of two- and three-dimensional
+Helmholtz/Maxwell scattering problems. At a similar time, \cite{lu2018perfectly}
+proposed a technique based on combining perfectly matched layers and a boundary
+integral representation on a certain truncated domain in the context of
+two-dimensional Helmholtz scattering problems. 
+% Due to the exponential decay of the Helmholtz Green function on the
+% complex-scaled PML layer, the kernels of the integral operators over the
+% infinite interfaces become exponentially small, allowing for an efficient
+% truncation with errors that decay exponentially respect to a truncation
+% parameter $\ell$ controlling the PML length. 
+It is worth mentioning the naive approach of simply truncating the domain far
+enough from the region of interest is rather unsatisfactory, specially for
+non-dissipative PDEs, due to the slow (algebraic) decay of the Greens function;
+in fact, as we will argue in this paper, such an abrupt truncation may not even
+converge in the zero-frequency regime, wherein the free-space Green function is
+no longer decaying.
 
 In this paper we build on the work of~\cite{lu2018perfectly} to develop a
 complex-scaled boundary integral equation method for the classical harmonic
 water-waves problem. The water-waves problem presents some interesting and novel
 challenges, of both theoretical and numerical nature, which are related to the
 fact that the free-space Green function is non-oscillatory, and as such its
-analytic extension does not become exponentially small inside the PML region.
-Despite this undesirable feature of the free-space Green function (which in fact
-grows logarithmically at infinity in two-dimensions), we will argue that the
-solution can be analytically extended into the complex plane so as to become
+analytic extension does not become exponentially small inside the PML region
+(this contrasts the work in~\cite{lu2018perfectly}, where the exponential decay
+of the Helmholtz free-space Green's function facilitates the analysis). Despite
+the non-oscillatory behavior of the Laplace fundamental solution, which in fact
+grows logarithmically at infinity in two-dimensions, we will argue that the
+solution can be analytically extended into the complex plane to become
 exponentially decreasing, justifying at least formally the truncation of certain
-integrals over unbounded domains. In more detail, letting $\Omega \subset
-\mathbb{R}^2$ denote the (unbounded) fluid domain bounded above by the
-linearized free surface $\Gamma_f$ and below by a bottom topography $\Gamma_b$,
-and letting $\Gamma_o$ denote the boundary of solid obstacles (either fully or
-partially) immersed in the fluid, we seek to solve the following equations:
+integrals over unbounded domains. 
+
+In more detail, letting $\Omega \subset \mathbb{R}^2$ denote the (unbounded)
+fluid domain bounded above by the linearized free surface $\Gamma_f$ and below
+by a bottom topography $\Gamma_b$, and letting $\Omega_o \subset \mathbb{R}^2$
+denote solid obstacles (either fully or partially) immersed in the fluid with
+$\Gamma_o = \partial \Omega_o$, we seek to solve the following system of equations:
 %
 \begin{subequations}
   \label{eq:water-waves-system}
@@ -213,24 +220,35 @@ partially) immersed in the fluid, we seek to solve the following equations:
     \label{eq:solid-bc}  
     \nabla \varphi \cdot \bn &=f_2, \quad \bx \in \Gamma_s \cup \Gamma_o,\\
     \label{eq:radiation-condition}  
-    \lim_{r \to \infty} r^{\frac{d-2}{2}} \left( \partial_{r} \varphi - i k_0 \varphi \right) &= 0,
+    \lim_{|x_1| \to \infty} \partial_{|x_1|} \varphi - i k \varphi  &= 0
   \end{align}
 \end{subequations}
 %
-with $k_0 \in \mathbb{R}^+$ in~\cref{eq:radiation-condition} being the solution of
-$k\tanh(kd) = \omega^2/g$, and $r = (x_1,\ldots,x_{d-1})$. Throughout this paper $\bx = (x_1,\ldots,x_d) \in \R^d$
-denotes a target point, $\bx_\parallel = (x_1,\ldots,x_{d-1})$ are the horizontal
-components of the target point, and $\bn$ is the unit normal pointing towards
-the fluid domain $\Omega$. Furthermore, the free surface is always located at $x_d = 0$, so that $\Gamma_f =
-\R \times \{0\} \setminus \Omega_o$, and the topography is of constant depth $h$
-outside a bounded domain (i.e. $\Gamma_b \setminus \R \times \{-h\}$ is
-bounded). Finally, for notational simplicity, it will be convenient to define a
-global impedance-like coefficient $\alpha$, and global source term $f$ as 
+where $k \in \mathbb{R}^+$ in~\cref{eq:radiation-condition} is the solution
+of $k\tanh(kd) = \omega^2/g$, with $\omega$ being a given frequency and $g$ is
+the gravitational acceleration. The variable $\varphi$ is a velocity potential
+related to the fluid velocity $\boldsymbol{u}$ through $\boldsymbol{u}(\bx,t) =
+e^{-i\omega t} \nabla \varphi$.  Throughout this paper $\bx = (x_1,x_2) \in \R^2$
+denotes a target point, and $\bn$ is the unit normal pointing towards the fluid
+domain $\Omega$. Furthermore, the free surface is always located at $x_2 = 0$,
+so that $\Gamma_f = \R \times \{0\} \setminus \Omega_o$, and the topography is
+of constant depth $d$ outside a bounded domain (i.e. $\Gamma_b \setminus \R
+\times \{-d\}$ is bounded). Finally, for notational simplicity, it will be
+convenient to define $\Gamma = \Gamma_f \cup \Gamma_s \cup \Gamma_o$, together
+with a global impedance-like coefficient $\alpha(\bx)$, and global source term $f$ so
+that the boundary conditions~\cref{eq:free-surface-bc,eq:solid-bc} become simply
+%
+\begin{align}
+  \label{eq:global-bc}  
+  \nabla \varphi \cdot \bn + \alpha(\bx) \varphi = f, \quad \bx \in \Gamma,
+\end{align}
+%
+with
 %
 \begin{align}
   \label{eq:global-defs}  
   \alpha(\bx) = \begin{cases}
-    -\omega^2/g  &\bx \in \Gamma_f\\
+    \omega^2/g  &\bx \in \Gamma_f\\
     0   &\bx \in \Gamma_b \cup \Gamma_o
   \end{cases}, \quad
   f(\bx) = \begin{cases}
@@ -239,20 +257,13 @@ global impedance-like coefficient $\alpha$, and global source term $f$ as
   \end{cases}, 
 \end{align}
 % 
-so that the boundary conditions~\cref{eq:free-surface-bc,eq:solid-bc} become simply
-%
-\begin{align}
-  \label{eq:global-bc}  
-  \nabla \varphi \cdot \bn - \alpha(\bx) \varphi = f, \quad \bx \in \Gamma
-\end{align}
-%
 
 The remaining of the paper is organized as follows. In
 \cref{sec:problem-formulation} we present the problem under consideration, and
 introduce the transformed problem under the PML change-of-variables. We focus in
 particular on the non-orthogonal PMLs, and show ...
 
-\section{Complex scaled integral equations}
+\section{Complex scaled integral equation}
 
 In this section we derive the main result of this paper: a complex scaled
 integral equation for solving~\cref{eq:water-waves-system} with the desirable
@@ -260,127 +271,117 @@ property that its solutions are exponentially decreasing as $x_1 \to \pm
 \infty$. To this end, we begin by recalling some classical results about the
 modal decomposition of $\phi$ for a channel of constant (finite) depth. 
 
-\begin{proposition}[Modal decomposition in two-dimensions]
-  \label{prop:modal-decomposition}
-  Suppose that problem \cref{eq:water-waves-system} is well-posed. Then its
-  solution $\varphi$ for $x_1>L$ can be written as
-  \begin{align}
-    \varphi^+(\bx) = \sum_{n=0}^{\infty} A_n^+ e^{-k_n x_1} \Psi_n(x_2)
+Suppose that problem \cref{eq:water-waves-system} is well-posed. Since the
+source term $f$ and the perturbation of the domain $\Omega_h$ are all supported
+in $|x_1|<L$,  the solution $\varphi$ satisfies homogeneous equations in
+$|x_1|>L$. As a consequence, it can be represented in $|x_1|>L$ as a
+superposition of modal solutions,  which are solutions of the equations with
+separated variables. More precisely (see for instance \cite{Bon-Jol-1993}), let
+us introduce the sequence $(\gamma_n)_{n\geq 1}$ such that
+\begin{equation}
+\label{eq:disp-evanescent}
+\gamma_n\tan(\gamma_nh)=-\dfrac{\omega^2}{g},\quad n\pi-\frac{\pi}{2}<\gamma_n h<n\pi+\frac{\pi}{2}
+    \end{equation}
+    and recall that $k\tanh(kh)=\omega^2/g$. Then one can prove that, with a suitable choice of the normalization constants $(a_n)$, the functions $(u_n)_{n\geq 0}$ form a Hilbert basis of $L^2((-h,0))$, where
+    \begin{align}
+    \label{eq:transversemodes}
+    u_0(x_2)=a_0\cosh(k(x_2+h)),&\\
+    u_n(x_2)=a_n\cos(\gamma_n(x_2+h)),& \quad n\geq 1.
   \end{align}
-  where $k_0 = ik$, and $k_n$ is the root of $k \tan(kh) + \omega^2/g$ in the
-  interval $[(n-1/2)\pi/h, n\pi/h]$, and $\Psi_n(x_2) = c_n \cos(k_n (x_2 +
-  h))$, with $c_n = \sqrt{ \frac{1}{2} + \frac{\sin(2 k_n h)}{4k_n h}}$ an $L^2$
-  normalization constant. Similarly, the solution for $x_1 < -L$ can be written
-  as
-  \begin{align}
-    \varphi^-(\bx) = \sum_{n=0}^{\infty} A_n^- e^{k_n x_1} \Psi_n(x_2)
-  \end{align}
-\end{proposition}
-\begin{proof}
-The proof follows by separation of variables, together with the fact that
-$\left\{\Psi_n \right\}_{n=0}^\infty$ forms an orthogonal basis for $L^2([0,-d])$.
-See e.g.~\cite[section 2.1]{linton2001handbook}.
-\end{proof}
+This, together with the radiation condition \cref{eq:radiation-condition}, leads
+to the following modal decomposition of $\varphi$:
+%
+\begin{align}
+  \label{eq:modaldecomp}
+  \varphi(x_1,x_2) = \begin{cases}
+  A_0^+u_0(x_2)e^{ik(x_1-L)} + \sum_{n\geq 1}A_n^+u_n(x_2)e^{-\gamma_n(x_1-L)} &\mbox{for }x_1>L,\\
+  A_0^-u_0(x_2)e^{-ik(x_1+L)} +\sum_{n\geq 1}A_n^-u_n(x_2)e^{\gamma_n(x_1+L)} &\mbox{for }x_1<-L.
+  \end{cases}
+\end{align}
+where 
+\begin{align}
+  A_n^\pm=\int_{-h}^0\varphi(\pm L,x_2)\overline{u_n(x_2)}dx_2,\quad n\geq 0.  
+\end{align}
 
-~\Cref{prop:modal-decomposition} gives an explicit decomposition of the
-solution, for $|x_1| > L$, in terms of one propagative mode and an infinitude of
-evanescent modes. Furthermore, as shown next, it provides a simple way to show
-that $\phi$ admits an analytic extension to complex values of $x_1$ (for any $d
-\leq x_2 \leq 0$):
-
-\begin{proposition}[Analytic extension]
+We see that, on each side of the perturbation,  the potential $\varphi$ is a
+superposition of the outgoing surface wave and of infinitely many evanescent
+modes. These expansions converge uniformly in $|x_1|>L$, together with all their
+derivatives. This shows in particular that $\varphi$ is a $\mathcal{C}^\infty$
+function in $|x_1|>L$, up to the boundaries $x_2=0$ and $x_2=L$. More
+importantly for our purpose, this modal decomposition can be used to study
+analytic properties of $\varphi$ with respect to the coordinate $x_1$. 
+\begin{proposition}
   \label{prop:analyticity}
   Suppose that problem \cref{eq:water-waves-system} is well-posed. Then its solution $\varphi$ for $x_1>L$ (resp. $x_1<-L$)  has an analytic extension to complex values of $x_1$ in $\Re(x_1)>L$ (resp. $\Re(x_1)<-L$). 
 \end{proposition}
 \begin{proof}
-Let us consider for instance the side $x_1>L$. It is clear that for any $N \geq
-1$, the finite sum 
-\begin{align}
-  \varphi_N^+(\bx) = \sum_{n=0}^{N} A_n^+ e^{-k_n x_1} \Psi_n(x_2)
-\end{align}
-is well-defined for complex values of $x_1$, and is a holomorphic function of
-$x_1$. Moreover, it converges to $\varphi(x_1,x_2)$ when $N\to +\infty$,
-uniformly in all compact subsets of $\Re(x_1)>L$.  Finally, thanks to Morera
-theorem, a uniform limit of a sequence of holomorphic functions is itself
-holomorphic.
+Let us consider for instance the side $x_1>L$. 
+  It is clear that for any $N \geq 1$, the finite sum $$A_0^-u_0(x_2)e^{-ik(x_1+L)}+\sum_{n= 1}^NA_n^-u_n(x_2)e^{\gamma_n(x_1+L)}$$
+is well-defined for complex values of $x_1$, and is a holomorphic function of $x_1$. Moreover, it converges to $\varphi(x_1,x_2)$ when $N\to +\infty$, uniformly in all compact subsets of $\Re(x_1)>L$.  Finally, thanks to Morera theorem, a uniform limit of a sequence of holomorphic functions is itself holomorphic.
 \end{proof}
 
-We consider now the PML change of variables, whose main goal is to transform
-(radiative) solutions of~\cref{eq:water-waves-system} into exponentially
-decaying functions. We will present the method in a somewhat general context so
-as to reuse the same notation when discussing the three-dimensional problem. 
+In the sequel, we are interested in the analytic extension of $\varphi$ when it
+is exponentially decaying at infinity. This leads to consider the analytic
+extension of $\varphi$ for $\Re(x_1)>L$  (resp. $\Re(x_1)<-L$) only for
+$\Im(x_1)>0$ (resp. $\Im(x_1)<0$), so that the propagating surface mode becomes
+exponentially decaying at infinity. This motivates the introduction of
+complex-stretching change of variables $\tau : \R^2 \to \C$ whose main goal is
+to transform the water waves problem ~\cref{eq:water-waves-system} so that its
+(radiative) solutions become exponentially decaying functions. 
 
-Let $\btau : \R^d \to \C^d$ be a vector-valued function representing a complex
-change of variables mapping points $\bx$ on our physical domain to complex points $\tilde{\bx} = \btau(\bx)$. This change of variables transforms $\Omega$ into $\tilde{\Omega}$, defined as
-\begin{align}
-  \tilde{\Omega} = \left\{ \tilde{\bx} = \btau(\bx) : \bx \in \Omega \right\}
-\end{align}
-The boundaries $\Gamma_f$ and $\Gamma_s$ are transformed into $\tilde{\Gamma}_f$
-and $\tilde{\Gamma}_s$ similarly. Assuming that $\phi$ admits an analytic
-extension into $\tilde{\Omega}$, it follows that its analytic extension
-satisfies the following complexified PDE on $\tilde{\Omega}$:
-%
+Let $\tilde{x}_1 = \tau(\bx)$, with $\tau(\bx) = x_1$ for $|x_1| < L$. Then the
+analytic extension of $\varphi$ satisfies, 
 \begin{subequations}
-\label{eq:complex-equations}  
-\begin{align}  
-    \label{eq:pml-laplace-equation}
-    \Delta_{\tilde{\bx}} \varphi &=0 \quad(\tilde \Omega)\\
-    \label{eq:pml-bc1} 
-    \nabla_{\tilde{\bx}} \varphi \cdot \bn - \alpha \varphi &= f \quad   (\tilde{\Gamma})
-\end{align}
+  \label{eq:complex-equations}  
+  \begin{align}  
+      \label{eq:pml-laplace-equation}
+      \Delta_{\tilde{\bx}} \varphi &=0, \quad \bx \in \Omega,\\
+      \label{eq:pml-bc1} 
+      \nabla_{\tilde{\bx}} \varphi \cdot \bn + \alpha(\bx) \varphi &=0, \quad \bx \in \Gamma_{f},\\
+      \label{eq:pml-bc2} 
+      \nabla_{\tilde{\bx}} \varphi \cdot \bn &=  f,  \quad \bx \in \Gamma_{s},
+  \end{align}
 \end{subequations}
-%
-where $\Delta_{\tilde{\bx}}$ denotes the Laplacian respect to the $\tilde{\bx}$
-variables; i.e. $\Delta_{\tilde{\bx}} = \sum_{n=1}^d \partial^2 / \partial
-\tilde{x}_n^2$. (Similarly $\nabla_{\tilde{\bx}}$ denotes the gradient respect
-to $\tilde{\bx}$.)
-
-Letting $\tvarphi(\bx) = \varphi(\tilde{\bx}) = (\varphi \circ \btau)(\bx)$, we
-may transform \cref{eq:complex-equations} back to the real variables $\bx$ by
-means of $\bx =\tau^{-1}(\tilde{\bx})$ (which is assumed to be invertible).
-Denoting by $J$ the Jacobian matrix of the transformation $\tilde{\bx} =
-\tau(\bx)$, given by $J_{ij}=\pder{\tau_i}{x_j} = \tau_{i,j}$, application of
-the chain rule (i.e. $\nabla_{\tilde{\bx}} \to (J^{-1})^t \nabla_{\bx}$)
-together with algebraic manipulations yields the following PML-transformed water
-waves problem:
+where $\Delta_{\tilde{\bx}} = \partial_{\tilde{x}_1 \tilde{x}_1} + \partial_{x_2
+x_2}$ and $\nabla_{\tilde{\bx}} = \left[\partial_{\tilde{x}_1},\partial_{x_2}
+\right]^\top$ are the Laplacian and gradient respect to the complex variable
+$\tilde{x}_1$. Letting $\tvarphi(x_1,x_2) = \varphi(\tilde{x}_1,x_2) =
+\varphi(\tau(\bx),x_2)$, application of the chain rule, together with some
+algebraic manipulations, allows us to transform \cref{eq:complex-equations} back
+to the real derivatives, yielding the following modified water waves problem for
+$\tilde{\varphi}$:
 \begin{subequations}
-\label{eq:pml-water-waves}  
-\begin{align}
-    \label{eq:pml-laplace-real}
-    \nabla \cdot \left( A \nabla \tvarphi(\bx) \right) &= 0, \quad (\Omega)\\
-    \label{eq:pml-bc-real} 
-    \nabla \tvarphi \cdot J^{-1}\bn - \alpha \tvarphi &= f \quad (\Gamma)
-\end{align}
+  \label{eq:pml-water-waves}  
+  \begin{align}
+      \label{eq:pml-laplace-real}
+      \nabla \cdot \left( A \nabla \tvarphi(\bx) \right) &= 0, \quad \bx \in \Omega,\\
+      \label{eq:pml-bc-real} 
+      \nabla \tvarphi \cdot J^{-1}\bn - \alpha \tvarphi &= f \quad \bx \in \Gamma,
+  \end{align}
 \end{subequations}
-where $A = |J|J^{-1}(J^{-1})^t$, with $J^{-1}$ denoting the inverse of $J$ and
-$|J|$ its determinant. System~\cref{eq:pml-water-waves} is the PML-transformed
-system of equations that we next seek to solve by a boundary integral equation
-method.
-
-We suppose throughout this paper that $\tau_d(\bx) = x_d$, so that the
-$d$-direction (corresponding to the \emph{depth} direction) is not affected by
-the complex-stretching $\tau$. This is a natural assumption since the depth
-direction, even if infinite, supports no waves. It then follows that $(J^{-1})^t
-\bn = \bn$, and therefore $|J| J^{-1} \bn = A \bn$; this identity can be used to
-recast the boundary condition~\cref{eq:pml-bc-real} using the co-normal
-derivative of $\tvarphi$:
+where $A = |J|J^{-1}(J^{-1})^\top \in \C^{2 \times 2}$, with $J$ given by
 \begin{align}
-  \label{eq:pml-bc-real-2}
-  \nabla \tvarphi \cdot A\bn - |J| \alpha \tvarphi &= f \quad (\Gamma)
+  J =   
+  \begin{bmatrix}
+    \partial_{x_1} \tau & \partial_{x_2} \tau\\
+    0 & 1
+  \end{bmatrix}
 \end{align}
+System~\cref{eq:pml-water-waves} is the PML-transformed system of equations that
+we next seek to solve in lieu of~\cref{eq:water-waves-system} by a boundary
+integral equation method.
 
 In what follows, we apply the general theory of boundary integral equations for
 strongly elliptic systems~\cite{mclean2000strongly}. This imposes restrictions
-on $\btau$; in particular, system \cref{eq:complex-equations} must remain
-strongly elliptic, as per the following definition~\cite[equation
-4.7]{mclean2000strongly}:
+on $\tau$ so that the system \cref{eq:pml-laplace-real} is strongly elliptic, as
+per the following definition~\cite[equation 4.7]{mclean2000strongly}:
 \begin{definition}[Strongly elliptic PDE]
   The scalar partial differential equation
   \begin{align}
     \nabla \cdot \left( A(\bx) \nabla \tvarphi(\bx) \right) = 0,
   \end{align}
-  where $A$ is a symmetric $d \times d$ matrix over $\mathbb{C}$ and
-  $\tvarphi : \R^d \to \C$, is strongly-elliptic on the domain $\Omega$
+  where $A$ is a symmetric $2 \times 2$ matrix over $\mathbb{C}$ and
+  $\tvarphi : \R^2 \to \C$, is strongly-elliptic on the domain $\Omega$
   if $\exists \delta > 0$ s.t.
   \begin{align}
     \mathrm{Re}\left( \xi^* A(\bx) \xi \right) > \delta |\xi|^2,
@@ -415,28 +416,84 @@ which \cref{eq:pml-laplace-real} is strongly elliptic:
   then $\exists v \in \R^2$ s.t. $v^t \mathrm{Re}(A) v \leq 0$. Letting $\xi = v$
   the other direction is proved.
 \end{proof}
-
 \Cref{pr:algebraic-condition-strongly-elliptic} provides an algebraic criterion,
 dependent only on the chosen change of variable $\btau$, to determine whether
-\cref{eq:pml-laplace-real} is strongly elliptic on $\Omega$. In most of what
-follows we will employ the so-called orthogonal PMLs, which yield a
-\emph{diagonal} Jacobian matrix $J$ (and thus a diagonal $A$). Under this
-simplifying assumption, directly verifying that the PML-tranformed PDE remains
-strongly elliptic is relatively straightforward. The more general case of
-non-orthogonal PMLs is a more involved, as it imposes constraints on the
-derivatives of $\btau$ respect to the vertical variable $x_d$. 
+\cref{eq:pml-laplace-real} is strongly elliptic on $\Omega$. 
 
-Under the assumption $\btau$ is such that~\cref{eq:pml-laplace-real} is strongly
-elliptic in the sense of~\cref{pr:algebraic-condition-strongly-elliptic}, it
-follows from the general theory of boundary integral
-equations~\cite{mclean2000strongly} that $\tvarphi$ admits Green-like integral
-representation formulae. Indeed, letting $\tilde{G}$ be the free-space Green's
-function associated with \cref{eq:pml-laplace-real}, and $\Omega_M = \left\{\bx
-\in \Omega : |\bx_{\perp}| <  M \right\}$ be a truncated domain with $M>L$, the
-following integral representation formula holds:
+In what follows we consider $\tau(x_1,x_2) = \mu(x_1) + i \sigma(x_1,x_2)$,
+where $\mu : \R \to \R$ represents a real-stretching and $\sigma : \R^2 \to \R$
+is the complex-stretching. A straightforward calculation shows that 
+\begin{align}
+  A = 
+  \begin{bmatrix}
+    \frac{1 + \tau_{,2}^2}{\tau_{,1}} & -\tau_{,2} \\
+    -\tau_{,2} & \tau_{,1}
+  \end{bmatrix}, \quad
+  \mathrm{Re}(A) = 
+  \begin{bmatrix}
+    \frac{\mathrm{Re}(\tau_{,2})^2 \mathrm{Re}(\tau_{,1}) + 2 \mathrm{Re}(\tau_{,2}) \mathrm{Im}(\tau_{,2}) \mathrm{Im}(\tau_{,1}) - \mathrm{Im}(\tau_{,2}) ^2 \mathrm{Re}(\tau_{,1}) + \mathrm{Re}(\tau_{,1})}{|\tau_{,1}|^2} & -\mathrm{Re}(\tau_{,2}) \\
+    -\mathrm{Re}(\tau_{,2}) & \mathrm{Re}(\tau_{,1})
+  \end{bmatrix}.
+\end{align}
+
+
+In most of what follows we will employ the so-called orthogonal PMLs whereas
+$\tau = \tau(x_1)$; this yields a \emph{diagonal} Jacobian matrix $J$ (and thus
+a diagonal $A$). Under this simplifying hypothesis, directly verifying that the
+PML-tranformed PDE remains strongly elliptic is straightforward, for the matrix
+$A$ takes the following simple form
+\begin{align}
+    A =
+    \begin{bmatrix}
+      \frac{1}{\tau'} & 0 \\
+      0 & \tau'
+    \end{bmatrix},
+\end{align}
+where $\tau' = \partial_{x_1} \tau$.
+Using~\cref{pr:algebraic-condition-strongly-elliptic}, it immediately follows
+that for orthogonal PMLs the system is strongly elliptic provided
+$\mathrm{Re}(\tau') > 0$. 
+
+The non-orthogonal case is a more involved, as it imposes constraints on the
+derivatives of $\tau$ with respect to $x_2$. A straightforward calculation shows
+that 
+\begin{align}
+  A = 
+  \begin{bmatrix}
+    \frac{1 + \tau_{,2}^2}{\tau_{,1}} & -\tau_{,2} \\
+    -\tau_{,2} & \tau_{,1}
+  \end{bmatrix}, \quad
+  \mathrm{Re}(A) = 
+  \begin{bmatrix}
+    \frac{\mathrm{Re}(\tau_{,2})^2 \mathrm{Re}(\tau_{,1}) + 2 \mathrm{Re}(\tau_{,2}) \mathrm{Im}(\tau_{,2}) \mathrm{Im}(\tau_{,1}) - \mathrm{Im}(\tau_{,2}) ^2 \mathrm{Re}(\tau_{,1}) + \mathrm{Re}(\tau_{,1})}{|\tau_{,1}|^2} & -\mathrm{Re}(\tau_{,2}) \\
+    -\mathrm{Re}(\tau_{,2}) & \mathrm{Re}(\tau_{,1})
+  \end{bmatrix}.
+\end{align}
+To simplify the computations, we will suppose that $\tau(x_1,x_2) = \mu(x_1) + i \sigma(x_1,x_2)$, with both
+$\mu$ and $\sigma$ real-valued functions. The matrix $\mathrm{Re}(A)$ then becomes
+\begin{align}  
+  \mathrm{Re}(A) = 
+  \begin{bmatrix}
+    \frac{\mu'(1-\sigma_{,2}^2)}{\mu'^2 + \sigma_{,1}^2} & 0 \\
+    0 & \mathrm{Re}(\tau_{,1})
+  \end{bmatrix}.
+\end{align}
+Since $\mu' > 0$, ellipticity is equivalent to the condition $|\sigma_{,2}(x_1,x_2)| <
+1 \ \forall \ (x_1,x_2)  \in \Omega$. We will return to this condition later
+when considering non-orthogonal PMLs in order to provide a geometrical meaning
+to this conditions.
+
+Proceeding henceforth under the assumption $\tau$ is such
+that~\cref{eq:pml-laplace-real} is strongly elliptic in the sense
+of~\cref{pr:algebraic-condition-strongly-elliptic}, it follows from the general
+theory of boundary integral equations~\cite{mclean2000strongly} that $\tvarphi$
+admits Green-like integral representation formulae. Indeed, letting $\tilde{G}$
+be the free-space Green's function associated with \cref{eq:pml-laplace-real},
+and $\Omega_M = \left\{\bx \in \Omega : |x_1| <  M \right\}$ be a truncated
+domain with $M>L$, the following integral representation formula holds:
 \begin{align}
   \label{eq:greens-representation}
-  \tvarphi(\br) = \mathcal{D}[\gamma_0\tvarphi](\br) - \mathcal{S}[\tilde{\gamma}_1 {\tvarphi}](\br) \quad \mbox{for} \quad \br \in \Omega_M,
+  \tvarphi(\br) = \mathcal{D}_{\partial \Omega_M}[\gamma_0\tvarphi](\br) - \mathcal{S}_{\partial \Omega_M}[\tilde{\gamma}_1 {\tvarphi}](\br) \quad \mbox{for} \quad \br \in \Omega_M,
 \end{align}
 where $\gamma_0$ and $\gamma_1$ are the generalized Dirichlet and Neumann trace
 operators, formally defined as 
@@ -449,28 +506,28 @@ operators, formally defined as
   \gamma_1[\sigma](\bx) &= \lim_{\epsilon \to 0^+} \nabla \sigma(\bx + \epsilon \bn(\bx)) \cdot A^t \bn(\bx),
 \end{align}
 \end{subequations}
-and $\mathcal{S}$ and $\mathcal{D}$ denote the single- and double-layer
-potentials, given by:
+and $\mathcal{S}_{\partial \Omega_M}$ and $\mathcal{D}_{\partial \Omega_M}$ denote the single- and
+double-layer potentials over $\partial \Omega_M$:
 \begin{subequations}\label{eq:potentials}
   \begin{align}
     \label{eq:SL-potential}  
-    \mathcal{S}[\sigma](\br) &:= \int_{\partial \Omega_M} {\tilde{G}}(\br, \by)\sigma(\by) \de s(\by), \\
+    \mathcal{S}_{\partial \Omega_M}[\sigma](\br) &:= \int_{\partial \Omega_M} {\tilde{G}}(\br, \by)\sigma(\by) \de s(\by), \\
     \label{eq:DL-potential}  
-    \mathcal{D}[\sigma](\br) &:= \int_{\partial \Omega_M} \tilde{\gamma}_{1,\by}{\tilde{G}}(\br, \by) \sigma(\by) \de s(\by).
+    \mathcal{D}_{\partial \Omega_M}[\sigma](\br) &:= \int_{\partial \Omega_M} \tilde{\gamma}_{1,\by}{\tilde{G}}(\br, \by) \sigma(\by) \de s(\by).
   \end{align}
 \end{subequations}
 (The notation $\tilde{\gamma}_{1,\by}$ in~\eqref{eq:DL-potential} means the
 derivatives in the operator $\tilde{\gamma}_1$ are with respect to the $\by$
 variable). 
 
-Using the fact that $\tvarphi$ decays exponentially with $M$ on the lateral
-boundaries $$\Theta = \left\{ (\bx_\perp, d) : |\bx_\perp| = M, d \in [0,-h]
-\right\} \subset \partial\Omega_M,$$ while $\tilde{G}$ grows at most
-logarithmically, we may take the limit $M \to \infty$ and replace $\Omega_M$
-(resp. $\partial \Omega_M$) by $\Omega$ (resp. $\partial \Omega = \Gamma$)
-in~\cref{eq:greens-representation} (resp.~\cref{eq:potentials}). This justifies
-the validity of the complex-scaled boundary integral representation on the
-domain $\Omega$ containing and unbounded interface $\Gamma$. 
+Using the fact that $\tvarphi$ decays exponentially as $|x_1| \to \infty $,
+while the integral kernels in~\cref{eq:greens-representation} grow at most
+logarithmically, the contribution from the lateral curves $\{ \pm M\} \times
+[0,-h]$ are exponentially small and in the limit $M \to \infty$ we may replace
+$\Omega_M$ (resp. $\partial \Omega_M$) by $\Omega$ (resp. $\partial \Omega =
+\Gamma$) in~\cref{eq:greens-representation} (resp.~\cref{eq:potentials}). This
+justifies the validity of the complex-scaled boundary integral representation on
+the domain $\Omega$ containing the unbounded interface $\Gamma$. 
 
 Finally, applying the trace operators $\gamma_0$ and $\gamma_1$
 to~\cref{eq:greens-representation}, and accounting for the jump in the
@@ -494,18 +551,16 @@ defined as:
 where p.v. in front of~\cref{eq:DL-operator} means the integral is to be
 interpreted as a Cauchy principal-value.
 
-Interestingly, owing to the fact~\cref{eq:pml-laplace-real} was obtained
-through a change of variables of a constant coefficient PDE with known
-fundamental solution, the free-space greens function $\tilde{G}(\bx,\by)$ is explicitly given by $\tilde{G}(\bx,\by) = G(\tau(\bx),\tau(\by))$:
+Interestingly, owing to the fact~\cref{eq:pml-laplace-real} was obtained through
+a change of variables of a constant coefficient PDE with known fundamental
+solution, the free-space greens function $\tilde{G}(\bx,\by)$ is explicitly
+given by $\tilde{G}(\bx,\by) = G(\tau(\bx),\tau(\by))$:
 \begin{proposition}[PML Greens function]
   The free-space Greens function associated with~\cref{eq:pml-laplace-real} is
   given by
   \begin{align}
-  \tilde{G}(\bx,\by) = G_{\Delta}(\tau(\bx),\tau(\by)) = 
-    \begin{cases}
-        \frac{-1}{2\pi}\log(\rho(\btau(\bx),\btau(\by))),\quad &d=2 \\
-        \frac{1}{4\pi\rho(\btau(\bx),\btau(\by))}, \quad &d=3
-    \end{cases},
+    \label{eq:complex-Green-function}
+  \tilde{G}(\bx,\by) = G_{\Delta}(\tau(\bx),\tau(\by)) = -\frac{1}{2\pi}\log(\rho(\btau(\bx),\btau(\by)))
   \end{align}
   where $\rho(\bx,\by) = \sqrt{(\bx-\by)\cdot(\bx-\by)}$, and where the square
   root is chosen with a branch-cut on the negative real line.
@@ -517,47 +572,48 @@ fundamental solution, the free-space greens function $\tilde{G}(\bx,\by)$ is exp
 \end{proof}
 
 With the validity of the representation formula~\cref{eq:greens-representation}
-established, and the Green's function readily available, we can now
-reformulate~\cref{eq:pml-laplace-real} using boundary integral equations.
-Using~\cref{eq:pml-bc-real-2} to replace $\gamma_1\tvarphi := \nabla \tvarphi
-\cdot A \bn$ in
-favor of $\gamma_0 \tvarphi$ in~\cref{eq:greens-formula}, we obtain the
-following second-kind boundary integral equation (BIE) for the unknown velocity potential
-$\tvarphi$:
+established, and the Green's function readily available
+in~\cref{eq:complex-Green-function}, we can now
+reformulate~\cref{eq:pml-laplace-real} using a boundary integral equation. For
+this purpose it is useful to recast the boundary condition~\cref{eq:pml-bc-real}
+using the co-normal derivative of $\tvarphi$:
+\begin{align}
+  \label{eq:pml-bc-real-2}
+  \nabla \tvarphi \cdot A\bn + |J| \alpha \tvarphi &= f, \quad \bx \in \Gamma.
+\end{align}
+(In deriving~\cref{eq:pml-bc-real-2}, we simply multiplied~\cref{eq:pml-bc-real}
+by $|J|$ and used the fact that $(J^{-1})^\top \bn =
+\bn$). Using~\cref{eq:pml-bc-real-2} to replace $\gamma_1\tvarphi := \nabla
+\tvarphi \cdot A \bn$ in favor of $\gamma_0 \tvarphi$
+in~\cref{eq:greens-formula}, we obtain the following second-kind boundary
+integral equation (BIE) for the unknown velocity potential $\tvarphi$:
 \begin{align}
   \label{eq:BIE}
   \frac{\tvarphi(\bx)}{2} - D[\tvarphi](\bx) + S\left[\alpha\left|J\right|\tvarphi\right](\bx) &= S[f](\bx), \quad \bx \in \Gamma.
 \end{align}
 
-Recalling the definition of $\alpha$ from~\cref{eq:global-defs}, we may simplify
-equation~\cref{eq:BIE} to obtain:
+Letting $\sigma = |J|\tvarphi$, it follows after some algebraic manipulations
+that the boundary integral equation that we seek to solve is given by:
 \begin{align}
-  \label{eq:BIE-2}
-  \frac{\tvarphi(\bx)}{2} - D[\tvarphi](\bx) + \frac{\omega^2}{g}S_{\Gamma_f}\left[\left|J\right|\tvarphi\right](\bx) &= S[f](\bx), \quad \bx \in \Gamma,
+  \label{eq:BIE-final}  
+  \frac{\sigma}{2|J|} - \int_\Gamma \frac{\partial G_{\Delta}}{\partial \bn_\by}(\tau(\bx),\tau(\by)) \sigma(\by) \de s(\by) + \frac{\omega^2}{g}\int_{\Gamma_f} G_{\Delta}(\tau(\bx),\tau(\by)) \sigma(\by) \de s(\by) \\
+  = \int_{\Gamma} G_{\Delta}(\tau(\bx),\tau(\by)) f(\by) \de s(\by). \nonumber
 \end{align}
 where the $\Gamma_f$ subscript in the single-layer operator means that
 integration is performed only over the free-surface. Interestingly, the proposed
-complex-scaled formulation~\cref{eq:BIE-2} depends linearly on the frequency
+complex-scaled formulation~\cref{eq:BIE-final} depends linearly on the frequency
 $\omega$; this contrasts e.g. formulations based on the water-waves Green's
-function, for which the $\omega$ dependency appears (nonlinearly) inside the
+function, for which the $\omega$ dependency appears (non-linearly) inside the
 kernels of the integral operators. We will explore this feature to compute
 resonant frequencies in~\cref{sec:?} through a linear (generalized) eigenvalue
 problem.
 
-% Writing down the explicit expression for the double-layer, we get
-% \begin{align}
-%   D[\tvarphi] = \int_\Gamma \nabla_\by G(\tau(\bx),\tau(\by)) \cdot A(\by) \bn(\by) \tvarphi \de s_\by
-%   = \int_\Gamma (\nabla_\by G)(\tau(\bx),\tau(\by)) \cdot \bn(\by) |J(\by)| \tvarphi \de s_\by.
-% \end{align}
-% Defining $\sigma = |J| \tvarphi$, we get 
-
-In the following section, we will seek to solve \cref{eq:BIE} by first
-truncating the unbounded curves at some finite distance, and then by
-discretizing the (singular) integral operators by an appropriate quadrature
-rule. 
+In the following section, we solve \cref{eq:BIE-final} by first truncating the
+unbounded curves at some finite distance, and then by discretizing the
+(singular) integral operators by an appropriate quadrature rule. 
 
 \begin{remark}[Irregular frequencies]
-  It remains unclear whether~\cref{eq:BIE} is uniquely solvable for all
+  It remains unclear whether~\cref{eq:BIE-final} is uniquely solvable for all
   frequencies $\omega$. If there exists values of $\omega$ such that the
   homogenous system ($f=0$) admits a non-trivial solution, then there is no
   uniqueness of the BIE. The unboundedness of $\Gamma$, together with the fact
@@ -580,9 +636,134 @@ rule.
 
 \section{Discretization}
 
+In everything that follows, we take $\tau = x_1 + i $
+
+Given the physical parameters $\omega, g$ and $h$, we compute $k$ and $\gamma_1$
+by solving 
+
+\subsection{PML}
+
+Given the physical parameters
+
 \section{Numerical results}
 
-\subsection{Convergence with respect to PML}
+Unless otherwise state, we will always fix $\omega^2/g$ to be one, and take the
+$\tau(x_1) = x_1 + i c (x-)$ In our first
+example, we consider the semi-infinite domain $\R^+ \times [0,-h]$, and impose a
+boundary condition on the $\Gamma_l = \{ 0 \} \times [0,-h]$ curve. The depth
+$d$ is taken to be $1$, which yields $k \approx 1.2$ and $\gamma_1=2.8$. 
+
+From the
+modal decomposition~\cref{eq:modaldecomp}, we know that
+\begin{align}
+  \varphi(x_1,x_2) = A_0^+u_0(x_2)e^{ik(x_1)} + \sum_{n\geq 1}A_n^+u_n(x_2)e^{-\gamma_n(x_1)},
+\end{align}
+is an exact solution of our problem. Taking its trace on $\Gamma_l$, we have our
+problem setup.
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}[scale=0.9]
+    \fill[color=blue!25] (-5,-4)--(5.,-4)--(5.,0)--(-5,0)--cycle;
+    \fill[color=blue!15] (5,-4)-- (2,-4)--(2,0)
+    --(5,0)--cycle;
+    \draw[color=vertB,thick] (-5,-4)-- (5.,-4);
+    \draw[color=red,thick] (-5,-4)-- (-5.,0);
+  %	\fill[orange] (0,-2)ellipse(1. and 0.35);
+  %	\fill[orange] (-.8,-2)--(-1.8,-2.5)--(-1.8 ,-1.5)--cycle;
+    \draw[color=blue,thick] (5.,0)--(-5,0);
+  %	\fill (.7,-2) ellipse(.05 and .05);
+    \draw[above] (0,0) node{$\nabla \varphi \cdot \bn +
+    \frac{\omega^2}{g}\varphi = 0$};
+    \draw[above] (-1,-2.5) node{$\Omega$};
+    \draw[above] (3.5,-2.5) node{$\Omega_{pml}$};
+    \draw[below] (-2,-4.3) node{$\partial_{\nu}\varphi = 0$};	
+    \draw[above] (-5,-2) node[rotate=90]{$\partial_{\nu} \phi = \Phi_{sw}$};
+    \draw[<->] (5.5,-4)--(5.5,0);
+    \draw[right] (5.5,-2) node{$d$};
+    \draw[<->,thick] (5,-4.7) -- (2,-4.7);
+    \draw[below] (3.5,-4.7) node{$\ell$};
+    \draw[color=red, samples=100]  [domain=-5:5]  plot(\x, {.3*sin(3.14*\x r)});
+    \draw[->,red,thick] (-4,-.5)--(-2,-.5);
+    \draw[->,red,thick] (2,-.5)--(4,-.5);
+  \end{tikzpicture}		  
+  \caption{Schematic of wavemaker problem}.
+\end{figure}
+
+In the first test we take $A_0 = 1$, $A_n = 0$ for $n\geq 1$, so that the
+solution is simply the propagative mode. The results are show in figure ...
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{0.49\linewidth}
+    \includegraphics[width=1\textwidth]{figures/wavemaker_modal_solution.pdf}
+    \caption{Behavior of the exact solution $\varphi$, its analytic extension $\tvarphi$, and the numerical approximation $\tvarphi_{\ell,h}$.}
+  \end{subfigure}
+  \begin{subfigure}{0.49\linewidth}
+    \includegraphics[width=1\textwidth]{figures/convergence_pml_planewave_depth_1.pdf}
+    \caption{Convergence of the solution as the length of the PML layer, $\ell$, is increased. The error is the $L_\infty$ }
+  \end{subfigure}
+  \label{fig:convergence-sourcepoint}
+  \caption{Convergence tests for a wavemaker with exact solution given by the sum of the propagative mode and the first evanescent mode for $h=1$ and $\omega^2/g = 1$. This gives $k \approx 1.2$ and $\gamma_1 \approx 2.8$. }
+\end{figure}
+
+As the depth is increased, we observe a change in the convergence behavior:
+
+\begin{figure}
+  \centering
+  \begin{subfigure}{0.49\linewidth}
+    \includegraphics[width=\textwidth]{figures/convergence_pml_planewave_depth_3.pdf}
+    \caption{Depth $d=3$, corresponding to $k \sin(\theta) \approx 0.71$, $\gamma_1 \approx 0.73$}
+    \label{fig:convergence-modal-solution-depth-3}
+  \end{subfigure}
+  \begin{subfigure}{0.49\linewidth}
+    \includegraphics[width=1\textwidth]{figures/convergence_pml_planewave_depth_4.pdf}
+    \caption{Depth $d=4$, corresponding to $k \sin(\theta) \approx = 0.71$, $\gamma_1 \approx 0.51$}
+    \label{fig:convergence-modal-solution-depth-4}
+  \end{subfigure}
+  \label{fig:convergence-modal-solution}
+  \caption{Change in the convergence behavior as the depth $d$ is increased.}
+\end{figure}
+
+While not necessary, it is possible to further improve the convergence of the
+method respect to the truncation parameter to obtain a $d$-independent result as
+$d \to \infty$. To this end, it is necessary to modify $\tau$ so that it also
+performs a real-stretching after the PML layer. We thus consider the change
+of variables $\tau$
+\begin{align}
+  \label{eq:pml-with-stretching}  
+  \mu = \begin{cases}
+    x_1, & |x_1| < L + \ell \\
+    \mu_0 (x_1 - L-\ell) + L+\ell, & |x_1| \geq L + \ell
+  \end{cases}, \quad
+  \sigma = \begin{cases}
+    0, & |x_1| < L\\
+    \sigma_0 (x_1 - L) + L, & |x_1| \geq L
+  \end{cases}
+\end{align}
+%
+A visualization of this change of variables is given
+in~\cref{fig:pml-with-stretching}.
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{figures/pml_real_and_imag.pdf}
+  \caption{Real and imaginary part of change of variables corresponding
+  to~\cref{eq:pml-with-stretching} with $\ell = L = 1$, $\sigma_0 = \sqrt{2}/2$,
+  and $\mu_0 = 2$.}
+  \label{fig:pml-with-stretching}
+\end{figure}
+%
+
+With the real stretching, we can recover the expected convergence rate
+of~\cref{fig:convergence-modal-solution-depth-4}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{figures/convergence_pml_stretching_planewave_depth_4.pdf}
+  \caption{Convergence of modal solution with a stretching layer of length $\lambda$ located after the PML to damp the evanescent mode.}
+  \label{fig:pml-convergence-stretching-depth-4}
+\end{figure}
+
+\subsection{Convergence with respect mesh refinement}
 
 We now show 
 
