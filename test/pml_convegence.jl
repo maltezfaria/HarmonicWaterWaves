@@ -10,7 +10,7 @@ gr()
 order = 7 # method order
 q     = 2*(order-1)-1 # quadrature order
 c     = 1
-d     = 4
+d     = 3
 pml_start = 1
 
 plot_evanescent = d != 1
@@ -30,7 +30,7 @@ for l in ll
     HarmonicWaterWaves.add_bottom!(tank,0,pml_start)
     HarmonicWaterWaves.add_bottom!(tank,pml_start,pml_start+l)
 
-    s1 = WPB.line(WW.Point2D(0,0),WW.Point2D(0,-d)) # left side
+    s1 = WPB.line(WW.Point2D(0,-d),WW.Point2D(0,0)) # left side
     HarmonicWaterWaves.add_obstacles!(tank,WPB.Domain(s1))
 
     pml = HarmonicWaterWaves.OrthogonalPML(;a = pml_start, c = c)
@@ -62,19 +62,20 @@ for l in ll
     end
 
     ϕ_pml = HarmonicWaterWaves.solve!(tank,f)
-    ϕ_exact = [ϕi(dof) for dof in quad.qnodes]
+    ϕ_exact = [ϕi(τ(dof)) for dof in quad.qnodes]
 
     x̃ = [τ(dof) for dof in quad.qnodes]
     ϕ_pml_exact = [ϕi(x) for x in x̃]
 
-    idxs_test = filter(i -> 0.1*pml_start < quad.qnodes[i].coords[1] < 0.8*pml_start,idxs_free)
-    push!(er,norm(ϕ_exact[idxs_test] - ϕ_pml[idxs_test],Inf))
+    # idxs_test = filter(i -> 0.0*pml_start < quad.qnodes[i].coords[1] < 0.8*pml_start,idxs_free)
+    # push!(er,norm(ϕ_exact[idxs_test] - ϕ_pml[idxs_test],Inf))
+    push!(er,norm(ϕ_exact[idxs_free] - ϕ_pml[idxs_free],Inf))
     # @info l,er[end]
 end
 
 ##
 ll_norm = ll/λ
-default(legendfontsize=12,xlabelfontsize=12,ylabelfontsize=12,guidefontsize=12)
+default(legendfontsize=12,xlabelfontsize=12,ylabelfontsize=12,guidefontsize=12,lw=2)
 fig = plot(yscale=:log10,xlabel=L"\ell / \lambda",m=:x,yticks=[10.0^(-i) for i in -1:12],ylims=(1e-13,0))
 plot!(fig, ll_norm, er,yscale=:log10,m=:x,label=L"|| \tilde{\varphi}_{\ell,h} - \varphi ||_{\infty}")
 # plot reference exponential decay

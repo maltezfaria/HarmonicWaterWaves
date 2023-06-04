@@ -7,7 +7,7 @@ import HarmonicWaterWaves as WW
 
 gr()
 
-savefig_ = true
+savefig_ = false
 
 pml_start     = 10
 pml_length    = 10
@@ -30,15 +30,14 @@ HarmonicWaterWaves.add_freesurface!(tank,pml_start,domain_end)
 HarmonicWaterWaves.add_bottom!(tank,0,pml_start)
 HarmonicWaterWaves.add_bottom!(tank,pml_start,domain_end)
 
-side = WPB.line(WW.Point2D(0,0),WW.Point2D(0,-depth))
+side = WPB.line(WW.Point2D(0,-depth),WW.Point2D(0,0))
 
 HarmonicWaterWaves.add_obstacles!(tank,WPB.Domain(side))
 
 pml = WW.OrthogonalPML(;a=pml_start,c=1)
-
 HarmonicWaterWaves.add_pml!(tank,pml)
-HarmonicWaterWaves.discretize!(tank;meshsize,qorder)
 
+HarmonicWaterWaves.discretize!(tank;meshsize,qorder)
 HarmonicWaterWaves.assemble_operators!(tank)
 
 ϕ, dϕ = HarmonicWaterWaves.plane_wave(tank)
@@ -63,6 +62,9 @@ function f(dof)
         return zero(ComplexF64)
     end
 end
+
+@info norm([ϕi(q) + k*dϕi(q) for q in tank.quad.qnodes[idxs_free]],Inf)
+@info norm([dϕi(q) for q in tank.quad.qnodes[idxs_bottom]],Inf)
 
 ϕ_pml = HarmonicWaterWaves.solve!(tank,f)
 ϕ_exact = [ϕi(dof) for dof in quad.qnodes]
@@ -91,14 +93,13 @@ display(fig)
 
 savefig_ && savefig(fig,"paper/figures/wavemaker_modal_solution.pdf")
 
-
 ##
 # sol = WW.solution(tank)
-# xx = 0:0.025:a+l
-# yy = -d:0.025:0
+# xx = 0:0.025:pml_start+pml_length
+# yy = -depth:0.025:0
 # u = [sol((x,y)) for y in yy, x in xx]
 
 # heatmap(xx,yy,real.(u))
 
-# x0  = WPB.Point2D(3,-d/3)
-# sol(x0) + ϕi(x0)
+# x0  = WPB.Point2D(3,-depth/3)
+# @show sol(x0) - ϕi(x0)

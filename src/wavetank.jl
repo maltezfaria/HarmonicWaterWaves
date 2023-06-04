@@ -54,7 +54,10 @@ end
     add_freesurface!(wavetank,lc,hc)
 
 Append `Γf` to the free-surface of `wavetank`. If passed a tuple `(lc,hc)`, then
-a plane with low-corner and high-corners given by `lc` and `uc` is created at `z=0`.
+a plane with low-corner and high-corners given by `lc` and `uc` is created at
+`z=0`.
+
+The normal vector should be oriented downwards into the fluid domain.
 """
 function add_freesurface!(wavetank::WaveTank,Γf::Domain)
     union!(freesurface(wavetank),Γf)
@@ -63,7 +66,7 @@ end
 
 function add_freesurface!(wavetank::WaveTank,a::Number,b::Number)
     @assert a < b
-    Γf = Domain(line(Point2D(b, 0), Point2D(a, 0)))
+    Γf = Domain(line(Point2D(a, 0), Point2D(b, 0)))
     add_freesurface!(wavetank,Γf)
 end
 
@@ -78,6 +81,7 @@ end
 
 """
     add_bottom!(wavetank,Γb)
+    add_bottom!(wavetank,lc,uc)
 
 Append `Γb` to `bottom(wavetank)`.
 """
@@ -92,7 +96,7 @@ function add_bottom!(wavetank, a::Number,b::Number)
     msg = """depth of `wavetank` must be finite.
     Call `set_depth!(tank,d)` to fix the depth"""
     @assert isfinite(d) msg
-    Γb = Domain(line(Point2D(a, -d), Point2D(b, -d)))
+    Γb = Domain(line(Point2D(b, -d), Point2D(a, -d)))
     add_bottom!(wavetank,Γb)
     return wavetank
 end
@@ -109,22 +113,22 @@ function add_bottom!(wavetank::WaveTank,a::NTuple{2},b::NTuple{2})
     add_bottom!(wavetank,Γf)
 end
 
+"""
+    add_pml!(wavetank,pml)
+
+Add a PML to the wavetank. The PML is a function that takes a point `x ∈ ℝᵈ` and
+returns a point `x̃ ∈ ℂᵈ`.
+
+See also [`OrthogonalPML`](@ref).
+"""
 function add_pml!(wavetank,pml)
     wavetank.pml_func = pml
-end
-# function add_pml!(wavetank;a,θ)
-#     τ = OrthogonalLinearPML(;a,θ)
-#     # τ = OrthogonalQuadraticPML(;a,θ)
-#     add_pml!(wavetank,τ)
-# end
-
-function add_orthogonal_pml!(wavetank;a,θ)
-    τ = OrthogonalLinearPML(;a,θ)
-    add_pml!(wavetank,τ)
 end
 
 """
     add_obstacles!(wavetank,Γ::Domain)
+
+Add an obstacle to `wavetank`.
 """
 function add_obstacles!(wavetank,Γ::Domain)
     union!(obstacles(wavetank),Γ)
@@ -203,16 +207,16 @@ function solve!(tank::WaveTank,f::AbstractVector,method=:gmres)
     quad    = quadrature(tank)
     τ       = pml(tank)
     dofs    = quadrature(tank).qnodes
-    k       = impedance(tank)
+    α       = impedance(tank)
     J_diag  = Diagonal([jacobian_det(τ,dof) for dof in dofs])
     J_diag*f ≈ f || @warn("source term does not vanish inside the PML")
     S,D = tank.S, tank.D
     rhs = S*f
-    # compute L = 0.5*|J|^{-1} + D - ω^2/g * Sfs
-    L   = 0.5*inv(J_diag) + D
+    # compute L = -0.5*|J|^{-1} + D + ω^2/g * Sfs
+    L   = -0.5*inv(J_diag) + D
     Γ   = freesurface(tank)
     Is  = dom2qtags(quad,Γ) # index of dofs on free surface
-    @. L[:,Is] = L[:,Is] - k*S[:,Is]
+    @. L[:,Is] = L[:,Is] + α*S[:,Is]
     # ϕ   = (L*J_diag)\rhs
     if method === :gmres
         @info "solving with gmres"
@@ -258,12 +262,11 @@ function solution(tank)
     τ       = pml(tank)
     dofs    = quadrature(tank).qnodes
     k       = impedance(tank)
-    # compute L = 0.5*|J|^{-1} + D - ω^2/g * Sfs
     Γ   = freesurface(tank)
     Is  = dom2qtags(quad,Γ) # index of dofs on free surface
     f′ = deepcopy(f)
     σ  = tank.σ
-    @. f′[Is] += k*σ[Is] # ω²/g |J| φ + f
+    @. f′[Is] -= k*σ[Is] # ω²/g |J| φ + f
     𝒮 = IntegralPotential(G,quad)[f′]
     𝒟 = IntegralPotential(dG,quad)[σ]
     sol = (x) -> 𝒟(x) - 𝒮(x)
