@@ -7,37 +7,35 @@ import WavePropBase as WPB
 
 import HarmonicWaterWaves as WW
 
-a, l = 10,5
-h = 0.05
+p    = HarmonicWaterWaves.Parameters(frequency=π,gravity=1)
+tank = HarmonicWaterWaves.WaveTank(parameters=p)
+d    = 1
+HarmonicWaterWaves.set_depth!(tank,d)
+λ = WW.wavelength(tank)
+
+a, l = λ,λ
+h = λ / 10
 q = 3
 θ = π/4
-d = 2
-
-p    = HarmonicWaterWaves.Parameters(frequency=√1,gravity=1)
-tank = HarmonicWaterWaves.WaveTank(parameters=p)
-
-# create piercing obstacle
-r = 1.5 # radius of obstacle
-x₀  = SVector(0,0.0) # center of obstacle
-obs = let r = r, x₀ = x₀
-    WPB.ParametricEntity(0,π) do (u,)
-        SVector(r*cos(u),-r*sin(u)) + x₀
-    end
-end |> WPB.Domain
-HarmonicWaterWaves.add_obstacles!(tank,obs)
 
 # free surface
-HarmonicWaterWaves.add_freesurface!(tank,-a-l,-a)
-HarmonicWaterWaves.add_freesurface!(tank,-a,-r)
-# HarmonicWaterWaves.add_freesurface!(tank,-r,r)
-HarmonicWaterWaves.add_freesurface!(tank,r,a)
-HarmonicWaterWaves.add_freesurface!(tank,a,a+l)
+HarmonicWaterWaves.add_freesurface!(tank,(-a,-a),(a,a))
+HarmonicWaterWaves.add_freesurface!(tank,(-a-l,-a-l),(-a,a+l)) # left layer
+HarmonicWaterWaves.add_freesurface!(tank,(-a,a),(a,a+l)) # top layer
+HarmonicWaterWaves.add_freesurface!(tank,(a,-a-l),(a+l,a+l)) # right layer
+HarmonicWaterWaves.add_freesurface!(tank,(-a,-a-l),(a,-a)) # bottom layer
 
-# bottom
-HarmonicWaterWaves.set_depth!(tank,d)
-HarmonicWaterWaves.add_bottom!(tank,-a-l,-a)
-HarmonicWaterWaves.add_bottom!(tank,-a,a)
-HarmonicWaterWaves.add_bottom!(tank,a,a+l)
+
+# free bottom
+HarmonicWaterWaves.add_bottom!(tank,(-a,-a),(a,a))
+HarmonicWaterWaves.add_bottom!(tank,(-a-l,-a-l),(-a,a+l)) # left layer
+HarmonicWaterWaves.add_bottom!(tank,(-a,a),(a,a+l)) # top layer
+HarmonicWaterWaves.add_bottom!(tank,(a,-a-l),(a+l,a+l)) # right layer
+HarmonicWaterWaves.add_bottom!(tank,(-a,-a-l),(a,-a)) # bottom layer
+
+# obstacle
+obs = WPB.Ball(center=(0,0,-1.1*λ),radius=λ) |> WPB.Domain |> WPB.boundary
+WW.add_obstacles!(tank,obs)
 
 # add pml
 HarmonicWaterWaves.add_orthogonal_pml!(tank;a,θ)
@@ -46,7 +44,7 @@ HarmonicWaterWaves.add_orthogonal_pml!(tank;a,θ)
 HarmonicWaterWaves.discretize!(tank;meshsize=h,qorder=q)
 
 # boundary conditions
-ϕi, dϕi = HarmonicWaterWaves.plane_wave(tank)
+ϕi, dϕi = HarmonicWaterWaves.plane_wave_3d(tank;θ=0)
 
 idxs_free   = WPB.dom2qtags(tank.quad,WW.freesurface(tank))
 idxs_bottom = WPB.dom2qtags(tank.quad,WW.bottom(tank))
@@ -64,6 +62,8 @@ if norm(ee1,Inf) > 1e-10 || norm(ee2,Inf) > 1e-10
     @warn "Incident wave does not satify surface and/or bottom conditions" norm(ee1,Inf), norm(ee2,Inf)
 end
 
+##
+
 # solve
 HarmonicWaterWaves.assemble_operators!(tank;correction=:quadgk)
 ϕ_pml = HarmonicWaterWaves.solve!(tank,f)
@@ -78,7 +78,7 @@ fig = plot(;legendfontsize=12)
 labeled = false
 for Γ in Γf
     I = WPB.dom2qtags(tank.quad,Γ)
-    plot!(fig,xx[I],real(ϕi.(tank.quad.qnodes[I]) +  ϕ_pml.vals[I]),label= labeled ? "" : "approximate pml",color=:red,ls=:solid)
+    scatter!(fig,xx[I],real(ϕi.(tank.quad.qnodes[I]) +  ϕ_pml.vals[I]),label= labeled ? "" : "approximate pml",color=:red,ls=:solid)
     labeled = true
 end
 plot!(fig,tank)
@@ -102,8 +102,8 @@ end
 cmin, cmax = -1,1
 
 anim = @animate for t in 0:0.2:2π
-    heatmap(xrange,yrange,real.(exp(-im*t).*uu),aspect_ratio=1,clims=(cmin,cmax),colorbar=false,size=(800,150),xlims=(-a,a))
+    heatmap(xrange,yrange,real.(exp(-im*t).*uu),aspect_ratio=1,clims=(-1.0,1.0),colorbar=false,size=(800,150))
     plot!(tank,lw=3)
 end
 
-gif(anim, "anim_total_r_$r.gif", fps = 15)
+gif(anim, "anim_fps15.gif", fps = 15)

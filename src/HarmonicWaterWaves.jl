@@ -6,6 +6,9 @@ using LinearAlgebra
 using Roots
 using RecipesBase
 using StaticArrays
+using LinearMaps
+using SparseArrays
+using IterativeSolvers
 
 # TODO: make a PR to SpecialFunctions to support complex expinti?
 import SpecialFunctions
@@ -26,16 +29,17 @@ import WavePropBase:
     normal,
     line,
     Point2D,
+    Point3D,
+    ParametricEntity,
     meshgen,
     NystromMesh,
     Laplace,
+    dom2qtags,
     SingleLayerOperator,
     DoubleLayerOperator,
     hcubature_correction,
-    dom2qtags,
-    NystromDensity
-
-
+    NystromDensity,
+    IntegralPotential
 
 include("pml.jl")
 include("parameters.jl")

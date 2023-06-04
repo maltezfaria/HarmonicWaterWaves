@@ -24,8 +24,8 @@ function wavenumber(p::Parameters)
     end
 end
 
-function evanescent_wavenumber(p::Parameters;n=0)
-    @assert n ≥ 0
+function evanescent_wavenumber(p::Parameters;n=1)
+    @assert n ≥ 1
     ω = frequency(p)
     g = gravity(p)
     d = depth(p)
@@ -33,11 +33,11 @@ function evanescent_wavenumber(p::Parameters;n=0)
         @warn "evanescent wavenumber is not defined for infinite depth"
         γ = 0.0
     else
-        f = γ -> γ * tan(γ) + d * ω^2 / g
-        a = π/2 + 1e-10 + n*π
-        b = π + n*π
+        f = γ -> γ * tan(γ*d) + ω^2 / g
+        a = (n*π - π/2)/d + 1e-10
+        b = (n*π + π/2)/d - 1e-10
         @debug f(a),f(b)
-        γ = find_zero(f,(a,b))/d
+        γ = find_zero(f,(a,b))
     end
     return γ
 end

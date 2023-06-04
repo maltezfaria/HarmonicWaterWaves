@@ -1,12 +1,11 @@
 """
     OrthogonalLinearPML
 
-Change of variables given by `x̃ = a + c*(x-a)` for `x>a` and `x̃ = -a +
-c*(x+a)` for `x<-a`. For `-a ≤ x ≤ a`, `x̃ = x`.
+Change of variables given by `x̃ = a + im*c*(x-a)` for `x>a` and `x̃ = -a +
+im*c*(x+a)` for `x<-a`. For `-a ≤ x ≤ a`, `x̃ = x`.
 """
 struct OrthogonalLinearPML
     a::Float64
-    # c::ComplexF64
     c::Float64
 end
 
@@ -41,6 +40,55 @@ function jacobian_det(f::OrthogonalLinearPML,dof)
         xd = x[d]
         # abs(xd) > a ? c : one(c)
         abs(xd) > a ? 1+im*c : one(ComplexF64)
+    end
+end
+
+"""
+    OrthogonalPML
+
+Change of variables given by `x̃ = a + im*c*(x-a)` for `a<x<a+b` and `x̃ = -a +
+im*c*(x+a)` for `-a-b<x<-a`. A real stretching is performed: `̃x = d*(x-b) + b`
+for `x>b` and `̃x = d*(x+b) - b` for `x<-b`.
+"""
+@kwdef struct OrthogonalPML
+    a::Float64
+    b::Float64 = Inf
+    c::Float64 = 1
+    d::Float64 = 1
+end
+
+function (f::OrthogonalPML)(dof)
+    x   = coords(dof)
+    N   = length(x)
+    (;a,b,c,d) = f
+    svector(N) do dim
+        xd = x[dim]
+        if dim == N
+            return ComplexF64(xd)
+        else
+            if xd > a && xd < b
+                ComplexF64(xd + (xd-a)*c*im)
+            elseif xd < -a && xd > -b
+                ComplexF64(xd + (xd+a)*c*im)
+            elseif xd >= b
+                ComplexF64(d*(xd-b) + b + (xd-a)*c*im)
+            elseif xd <= -b
+                ComplexF64(d*(xd+b) - b + (xd+a)*c*im)
+            else
+                ComplexF64(xd)
+            end
+        end
+    end
+end
+
+function jacobian_det(f::OrthogonalPML,dof)
+    x = coords(dof)
+    N = length(x)
+    (;a,b,c,d) = f
+    prod(1:N-1) do dim
+        xd = x[dim]
+        # abs(xd) > a ? c : one(c)
+        a < abs(xd) < b ? 1+im*c : abs(xd) >= b ? (ComplexF64(d + im*c)) : one(ComplexF64)
     end
 end
 

@@ -7,18 +7,20 @@ import HarmonicWaterWaves as WW
 
 gr()
 
-savefig_ = false
+savefig_ = true
 
 pml_start     = 10
 pml_length    = 10
-domain_end    = stretch_start + stretch_length
-meshsize      = 0.5
+domain_end    = pml_start + pml_length
 order         = 7 # method order
 qorder        = 2*(order-1)-1 # quadrature order
 depth         = 1
 
 p    = HarmonicWaterWaves.Parameters(frequency=sqrt(1),gravity=1)
 tank = HarmonicWaterWaves.WaveTank(parameters=p)
+
+λ = WW.wavelength(p)
+meshsize = λ/10
 
 HarmonicWaterWaves.set_depth!(tank,depth)
 
@@ -32,7 +34,7 @@ side = WPB.line(WW.Point2D(0,0),WW.Point2D(0,-depth))
 
 HarmonicWaterWaves.add_obstacles!(tank,WPB.Domain(side))
 
-pml = WW.OrthogonalPML(;a=pml_start)
+pml = WW.OrthogonalPML(;a=pml_start,c=1)
 
 HarmonicWaterWaves.add_pml!(tank,pml)
 HarmonicWaterWaves.discretize!(tank;meshsize,qorder)
@@ -81,7 +83,7 @@ for Γ in Γf
     I = WPB.dom2qtags(quad,Γ)
     plot!(fig,xx[I],real(ϕ_exact[I]),label= labeled ? "" : L"$\Re(\varphi)$",color=:blue,lw=2,ls=:dot)
     plot!(fig,xx[I],real(ϕ_pml_exact[I]),label= labeled ? "" : L"$\Re(\tilde{\varphi})$",color=:green,lw=2,ls=:solid)
-    plot!(fig,xx[I],real(ϕ_pml.vals[I]),label= labeled ? "" : L"$\Re(\tilde{\varphi}_{\ell,h})$",color=:red,ls=:dash,lw=2)
+    scatter!(fig,xx[I],real(ϕ_pml.vals[I]),label= labeled ? "" : L"$\Re(\tilde{\varphi}_{\ell,h})$",color=:red,ls=:dash,lw=2,m=:o,ms=2)
     labeled = true
 end
 

@@ -17,6 +17,8 @@ Base.@kwdef mutable struct WaveTank
     Dop                      = nothing # double layer operator
     S                        = nothing
     D                        = nothing
+    f                        = nothing
+    σ                        = nothing # |J| ϕ
 end
 
 freesurface(tank::WaveTank) = tank.freesurface
@@ -26,6 +28,7 @@ parameters(t::WaveTank)     = t.parameters
 pml(t::WaveTank)            = t.pml_func
 mesh(t::WaveTank)           = t.mesh
 quadrature(t::WaveTank)     = t.quad
+ambient_dimension(t::WaveTank) = ambient_dimension(t.freesurface)
 
 function domain(tank::WaveTank)
     freesurface(tank) ∪ bottom(tank) ∪ obstacles(tank)
@@ -48,8 +51,10 @@ end
 # helper functions to generate the domain
 """
     add_freesurface!(wavetank,Γf::Domain)
+    add_freesurface!(wavetank,lc,hc)
 
-Append `Γf` to the free-surface of `wavetank`.
+Append `Γf` to the free-surface of `wavetank`. If passed a tuple `(lc,hc)`, then
+a plane with low-corner and high-corners given by `lc` and `uc` is created at `z=0`.
 """
 function add_freesurface!(wavetank::WaveTank,Γf::Domain)
     union!(freesurface(wavetank),Γf)
@@ -61,6 +66,15 @@ function add_freesurface!(wavetank::WaveTank,a::Number,b::Number)
     Γf = Domain(line(Point2D(b, 0), Point2D(a, 0)))
     add_freesurface!(wavetank,Γf)
 end
+
+function add_freesurface!(wavetank::WaveTank,a::NTuple{2},b::NTuple{2})
+    @assert all(a .< b)
+    Γf  = ParametricEntity(a,b) do u
+        SVector(u[1],u[2],0)
+    end |> Domain
+    add_freesurface!(wavetank,Γf)
+end
+
 
 """
     add_bottom!(wavetank,Γb)
@@ -81,6 +95,18 @@ function add_bottom!(wavetank, a::Number,b::Number)
     Γb = Domain(line(Point2D(a, -d), Point2D(b, -d)))
     add_bottom!(wavetank,Γb)
     return wavetank
+end
+
+function add_bottom!(wavetank::WaveTank,a::NTuple{2},b::NTuple{2})
+    @assert all(a .< b)
+    d = depth(wavetank)
+    msg = """depth of `wavetank` must be finite.
+    Call `set_depth!(tank,d)` to fix the depth"""
+    @assert isfinite(d) msg
+    Γf  = ParametricEntity(a,b) do u
+        SVector(u[1],u[2],-d)
+    end |> Domain
+    add_bottom!(wavetank,Γf)
 end
 
 function add_pml!(wavetank,pml)
@@ -105,7 +131,7 @@ function add_obstacles!(wavetank,Γ::Domain)
     return wavetank
 end
 
-function discretize!(tank::WaveTank;meshsize,qorder)
+function discretize!(tank::WaveTank;meshsize,qorder=9)
     Γ    = domain(tank)
     @info "meshing wavetank"
     mesh = meshgen(Γ;meshsize)
@@ -113,6 +139,7 @@ function discretize!(tank::WaveTank;meshsize,qorder)
     tank.mesh = mesh
     @info "creating a quadrature for the mesh"
     quad   = NystromMesh(mesh;qorder)
+    N = ambient_dimension(mesh)
     tank.parameters.qorder = qorder
     tank.quad = quad
     # assemble lazy integral operators
@@ -120,9 +147,9 @@ function discretize!(tank::WaveTank;meshsize,qorder)
     p       = parameters(tank)
     τ       = pml(tank)
     if isnothing(τ)
-        op      = Laplace(;dim=2)
+        op      = Laplace(;dim=N)
     else
-        op      = LaplacePML(;dim=2,τ)
+        op      = LaplacePML(;dim=N,τ)
     end
     Sop     = SingleLayerOperator(op,quad)
     Dop     = DoubleLayerOperator(op,quad)
@@ -134,21 +161,45 @@ end
 function assemble_operators!(tank::WaveTank;correction=:quadgk,compression=:matrix)
     m,n = size(tank.Sop)
     h = tank.parameters.meshsize
+    q = tank.parameters.qorder
     @info "assembling $m × $n single- and double-layer operators"
-    if compression == :matrix
-        S       = tank.Sop |> Matrix
-        D       = tank.Dop |> Matrix
+    @info "|--dense computation"
+    t = @elapsed begin
+        if compression == :matrix
+            S       = tank.Sop |> Matrix
+            D       = tank.Dop |> Matrix
+        end
     end
-    if correction == :quadgk
-        δS       = hcubature_correction(tank.Sop;max_dist=10*h,maxevals=200)
-        δD       = hcubature_correction(tank.Dop;max_dist=10*h,maxevals=200)
+    @info "    |--- took $t seconds"
+    @info "|--sparse correction"
+    t = @elapsed begin
+        if correction == :quadgk
+            δS       = hcubature_correction(tank.Sop;max_dist=5*h,maxevals=2000,atol=min(h^q,1e-12))
+            δD       = hcubature_correction(tank.Dop;max_dist=5*h,maxevals=2000,atol=min(h^q,1e-12))
+        else
+            error("unknown correction method")
+        end
     end
-    tank.S = S + δS
-    tank.D = D + δD
+    @info "    |--- took $t seconds"
+    @info "|--composing dense and sparse operators"
+    t = @elapsed begin
+        if correction == :none
+            tank.S   = S
+            tank.D   = D
+        elseif compression == :matrix
+            tank.S = S + δS
+            tank.D = D + δD
+        else
+            tank.S   = LinearMap(S) + LinearMap(δS)
+            tank.D   = LinearMap(D) + LinearMap(δD)
+        end
+    end
+    @info "    |--- took $t seconds"
     return tank
 end
 
-function solve(tank::WaveTank,f::AbstractVector)
+function solve!(tank::WaveTank,f::AbstractVector,method=:gmres)
+    tank.f  = f
     quad    = quadrature(tank)
     τ       = pml(tank)
     dofs    = quadrature(tank).qnodes
@@ -163,14 +214,60 @@ function solve(tank::WaveTank,f::AbstractVector)
     Is  = dom2qtags(quad,Γ) # index of dofs on free surface
     @. L[:,Is] = L[:,Is] - k*S[:,Is]
     # ϕ   = (L*J_diag)\rhs
-    σ   = L\rhs
+    if method === :gmres
+        @info "solving with gmres"
+        t = @elapsed begin
+            σ, hist = gmres(L, rhs; restart=1000, maxiter=1000, log=true, verbose=false, reltol=1e-12)
+        end
+        @info "|-- took $t seconds"
+        @info "|-- gmres converged in $(hist.iters) iterations"
+    else
+        σ   = L\rhs
+    end
     ϕ   = inv(J_diag)*σ
+    tank.σ = σ
     return NystromDensity(ϕ,quad)
 end
 
-function solve(tank::WaveTank,f::Function)
+function solve_eigenvalues(tank)
+    quad    = quadrature(tank)
+    τ       = pml(tank)
+    dofs    = quadrature(tank).qnodes
+    J_diag  = Diagonal([jacobian_det(τ,dof) for dof in dofs])
+    S,D = tank.S, tank.D
+    # solve Ax = λBx, with A = 0.5*|J|^{-1} + D
+    A   = 0.5*inv(J_diag) + D
+    Γ   = freesurface(tank)
+    Is  = dom2qtags(quad,Γ) # index of dofs on free surface
+    B   = zero(S)
+    B[:,Is] = S[:,Is]
+    @info "computing generalized eigenvalue decomposition"
+    return eigen(A,B)
+end
+
+function solve!(tank::WaveTank,f::Function)
     quad = quadrature(tank)
-    solve(tank,[f(dof) for dof in quad.qnodes])
+    solve!(tank,[f(dof) for dof in quad.qnodes])
+end
+
+function solution(tank)
+    G = tank.Sop.kernel
+    dG = tank.Dop.kernel
+    f = tank.f
+    quad    = quadrature(tank)
+    τ       = pml(tank)
+    dofs    = quadrature(tank).qnodes
+    k       = impedance(tank)
+    # compute L = 0.5*|J|^{-1} + D - ω^2/g * Sfs
+    Γ   = freesurface(tank)
+    Is  = dom2qtags(quad,Γ) # index of dofs on free surface
+    f′ = deepcopy(f)
+    σ  = tank.σ
+    @. f′[Is] += k*σ[Is] # ω²/g |J| φ + f
+    𝒮 = IntegralPotential(G,quad)[f′]
+    𝒟 = IntegralPotential(dG,quad)[σ]
+    sol = (x) -> 𝒟(x) - 𝒮(x)
+    return sol
 end
 
 # incident wave
@@ -199,19 +296,27 @@ function evanescent_wave(tank::WaveTank;n=1,s=1)
     d = depth(tank)
     γ = evanescent_wavenumber(tank;n)
     A = ComplexF64(1) # normalization constant
-    return _modal_solution(A,im*γ,d)
-    # ϕᵢ  = (dof) -> begin
-    #     x = coords(dof)
-    #     A*exp(-γ*x[1])*cos(γ*(x[2]+d))
-    # end
-    # dϕᵢ = (dof) -> begin
-    #     x = coords(dof)
-    #     n = normal(dof)
-    #     -A*γ*exp(-γ*x[1]) * (cos(γ*(x[2]+d))*n[1] - sin(γ*(x[2]+d)*n[2]))
-    # end
-    # return ϕᵢ,dϕᵢ
+    return _modal_solution(A,s*im*γ,d)
 end
 
+# incident wave
+function plane_wave_3d(tank;θ=0)
+    d = depth(tank)
+    β = wavenumber(tank)
+    A = 1/cosh(β*d) # normalization constant
+    ϕᵢ  = (dof) -> begin
+        x = coords(dof)
+        A*exp(im*β*(cos(θ)*x[1] + sin(θ)*x[2]))*cosh(β*(x[3]+d))
+    end
+    # normal derivative of ϕᵢ in 3d
+    dϕᵢ = (dof) -> begin
+        x = coords(dof)
+        n = normal(dof)
+        A*β*exp(im*β*(cos(θ)*x[1] + sin(θ)*x[2])) *
+        (im*cosh(β*(x[3]+d))*cos(θ)*n[1] + im*cosh(β*(x[3]+d))*sin(θ)*n[2] + sinh(β*(x[3]+d)*n[3]))
+    end
+    return ϕᵢ,dϕᵢ
+end
 
 # plotting
 

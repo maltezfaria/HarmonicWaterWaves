@@ -9,6 +9,7 @@ using LaTeXStrings
 gr()
 order = 7 # method order
 q     = 2*(order-1)-1 # quadrature order
+c     = 1
 d     = 4
 pml_start = 1
 
@@ -32,7 +33,7 @@ for l in ll
     s1 = WPB.line(WW.Point2D(0,0),WW.Point2D(0,-d)) # left side
     HarmonicWaterWaves.add_obstacles!(tank,WPB.Domain(s1))
 
-    pml = HarmonicWaterWaves.OrthogonalPML(;a = pml_start)
+    pml = HarmonicWaterWaves.OrthogonalPML(;a = pml_start, c = c)
     HarmonicWaterWaves.add_pml!(tank,pml)
 
     HarmonicWaterWaves.discretize!(tank;meshsize=h,qorder=q)
@@ -77,7 +78,7 @@ default(legendfontsize=12,xlabelfontsize=12,ylabelfontsize=12,guidefontsize=12)
 fig = plot(yscale=:log10,xlabel=L"\ell / \lambda",m=:x,yticks=[10.0^(-i) for i in -1:12],ylims=(1e-13,0))
 plot!(fig, ll_norm, er,yscale=:log10,m=:x,label=L"|| \tilde{\varphi}_{\ell,h} - \varphi ||_{\infty}")
 # plot reference exponential decay
-β = WW.wavenumber(p)
+β = c .* WW.wavenumber(p)
 γ = WW.evanescent_wavenumber(p)
 ref = exp.(-β.*ll)
 iref = findlast(l->l<3,ll_norm)

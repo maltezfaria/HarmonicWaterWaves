@@ -8,7 +8,7 @@ import WavePropBase as WPB
 import HarmonicWaterWaves as WW
 
 a, l = 10,5
-h = 0.05
+h = 0.1
 q = 3
 θ = π/4
 d = 2
@@ -45,28 +45,13 @@ HarmonicWaterWaves.add_orthogonal_pml!(tank;a,θ)
 # create mesh
 HarmonicWaterWaves.discretize!(tank;meshsize=h,qorder=q)
 
-# boundary conditions
-ϕi, dϕi = HarmonicWaterWaves.plane_wave(tank)
-
 idxs_free   = WPB.dom2qtags(tank.quad,WW.freesurface(tank))
 idxs_bottom = WPB.dom2qtags(tank.quad,WW.bottom(tank))
 idxs_obs   = WPB.dom2qtags(tank.quad,WW.obstacles(tank))
 
-f = zeros(ComplexF64, length(tank.quad.qnodes))
-for i in idxs_obs
-    f[i] = -dϕi(tank.quad.qnodes[i])
-end
-
-# sanity checks
-ee1  = [dϕi(dof) - WW.impedance(tank)*ϕi(dof) for dof in tank.quad.qnodes[idxs_free]]
-ee2  = [dϕi(dof) for dof in tank.quad.qnodes[idxs_bottom]]
-if norm(ee1,Inf) > 1e-10 || norm(ee2,Inf) > 1e-10
-    @warn "Incident wave does not satify surface and/or bottom conditions" norm(ee1,Inf), norm(ee2,Inf)
-end
-
 # solve
 HarmonicWaterWaves.assemble_operators!(tank;correction=:quadgk)
-ϕ_pml = HarmonicWaterWaves.solve!(tank,f)
+F = HarmonicWaterWaves.solve_eigenvalues(tank)
 
 ##
 scale_size = 1.0
