@@ -162,9 +162,11 @@ function discretize!(tank::WaveTank;meshsize,qorder=9)
     return tank
 end
 
-function assemble_operators!(tank::WaveTank;correction=:quadgk,compression=:matrix)
+function assemble_operators!(tank::WaveTank;
+                            compression=:matrix,atol=1e-8,maxevals=20_000, initdiv = 1, maxdist = nothing)
     m,n = size(tank.Sop)
     h = tank.parameters.meshsize
+    isnothing(maxdist) && (maxdist = 5*h)
     q = tank.parameters.qorder
     @info "assembling $m × $n single- and double-layer operators"
     @info "|--dense computation"
@@ -177,22 +179,17 @@ function assemble_operators!(tank::WaveTank;correction=:quadgk,compression=:matr
     @info "    |--- took $t seconds"
     @info "|--sparse correction"
     t = @elapsed begin
-        if correction == :quadgk
-            δS       = hcubature_correction(tank.Sop;max_dist=5*h,maxevals=2000,atol=min(h^q,1e-12))
-            δD       = hcubature_correction(tank.Dop;max_dist=5*h,maxevals=2000,atol=min(h^q,1e-12))
-        else
-            error("unknown correction method")
-        end
+        δS       = hcubature_correction(tank.Sop;maxdist,atol,maxevals,initdiv)
+        δD       = hcubature_correction(tank.Dop;maxdist,atol,maxevals,initdiv)
     end
     @info "    |--- took $t seconds"
     @info "|--composing dense and sparse operators"
     t = @elapsed begin
-        if correction == :none
-            tank.S   = S
-            tank.D   = D
-        elseif compression == :matrix
+        if compression == :matrix
             tank.S = S + δS
             tank.D = D + δD
+            # tank.S = S
+            # tank.D = D
         else
             tank.S   = LinearMap(S) + LinearMap(δS)
             tank.D   = LinearMap(D) + LinearMap(δD)
@@ -225,8 +222,13 @@ function solve!(tank::WaveTank,f::AbstractVector,method=:gmres)
         end
         @info "|-- took $t seconds"
         @info "|-- gmres converged in $(hist.iters) iterations"
-    else
-        σ   = L\rhs
+    elseif method === :direct
+        @info "solving with direct solver"
+        t = @elapsed begin
+            σ   = L\rhs
+        end
+        @info "|-- took $t seconds"
+    else error("unknown method")
     end
     ϕ   = inv(J_diag)*σ
     tank.σ = σ
@@ -259,14 +261,12 @@ function solution(tank)
     dG = tank.Dop.kernel
     f = tank.f
     quad    = quadrature(tank)
-    τ       = pml(tank)
-    dofs    = quadrature(tank).qnodes
     k       = impedance(tank)
     Γ   = freesurface(tank)
     Is  = dom2qtags(quad,Γ) # index of dofs on free surface
     f′ = deepcopy(f)
     σ  = tank.σ
-    @. f′[Is] -= k*σ[Is] # ω²/g |J| φ + f
+    @. f′[Is] -= k*σ[Is] # f - ω²/g |J| φ
     𝒮 = IntegralPotential(G,quad)[f′]
     𝒟 = IntegralPotential(dG,quad)[σ]
     sol = (x) -> 𝒟(x) - 𝒮(x)
@@ -289,7 +289,8 @@ function _modal_solution(A,β,d)
     dϕᵢ = (dof) -> begin
         x = coords(dof)
         n = normal(dof)
-        A*β*exp(im*β*x[1]) * (im*cosh(β*(x[2]+d))*n[1] + sinh(β*(x[2]+d)*n[2]))
+        @assert norm(n) ≈ 1
+        A*β*exp(im*β*x[1]) * (im*cosh(β*(x[2]+d))*n[1] + sinh(β*(x[2]+d))*n[2])
     end
     return ϕᵢ,dϕᵢ
 end
