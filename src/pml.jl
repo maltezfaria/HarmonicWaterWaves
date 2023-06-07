@@ -151,7 +151,9 @@ default_density_eltype(::LaplacePML) = ComplexF64
 
 complex_strecthing(op::LaplacePML) = op.complex_strecthing
 
-_log(z::Complex) = isreal(z) ? log(real(z)) : log(z)
+function _log(z::T)::T where {T <: Complex}
+    isreal(z) ? log(real(z)) : log(z)
+end
 
 function (SL::SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplacePML}
     x = coords(target)
