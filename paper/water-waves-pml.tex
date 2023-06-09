@@ -218,7 +218,7 @@ $\Gamma_o = \partial \Omega_o$, we seek to solve the following system of equatio
     \label{eq:free-surface-bc}
     \nabla \varphi \cdot \bn + \frac{\omega^2}{g}\varphi &=f_1, \quad \bx \in \Gamma_f,\\
     \label{eq:solid-bc}  
-    \nabla \varphi \cdot \bn &=f_2, \quad \bx \in \Gamma_s \cup \Gamma_o,\\
+    \nabla \varphi \cdot \bn &=f_2, \quad \bx \in \Gamma_b \cup \Gamma_o,\\
     \label{eq:radiation-condition}  
     \lim_{|x_1| \to \infty} \partial_{|x_1|} \varphi - i k \varphi  &= 0
   \end{align}
@@ -323,14 +323,14 @@ us introduce the sequence $(\gamma_n)_{n\geq 1}$ such that
 \end{equation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Then one can prove that, with a suitable choice of the normalization constants
-$(a_n)$, the functions $(u_n)_{n\geq 0}$ form a Hilbert basis of $L^2((-h,0))$,
+$(a_n)$, the functions $(u_n)_{n\geq 0}$ form a Hilbert basis of $L^2((-d,0))$,
 where
 \begin{align}
 \label{eq:transversemodes}
 u_0(x_2)=a_0\cosh(k(x_2+d)),&\\
 u_n(x_2)=a_n\cos(\gamma_n(x_2+d)),& \quad n\geq 1,
 \end{align}
-with $k \in \R^+$ being the solution of $k\tanh(kh)=\omega^2/g$. Together with
+with $k \in \R^+$ being the solution of $k\tanh(kd)=\omega^2/g$. Together with
 the radiation condition \cref{eq:radiation-condition}, this leads to the
 following modal decomposition of $\varphi$:
 %
@@ -724,22 +724,27 @@ complex-stretching strength $\sigma_0$ is chosen to be one;
 In this section we present numerical results to illustrate the proposed method,
 as well as to test the role of the various parameters. Unless otherwise state we
 set $\omega^2/g =1$. All linear systems are solved by means of GMRES with a
-relative tolerance of $10^{-12}$.
+relative tolerance of $10^{-12}$. All reported errors are maximum errors over a
+set of a set of test points $\boldsymbol{X} = \left\{ \bx_n \right\}_{n=1}^N
+\subset \Omega$:
+\begin{align}
+  E_{\ell,h} = \max_{\bx \in \boldsymbol{X}} |\phi_{\ell,h}(\bx_n) - \phi_{ref}(\bx_n) |
+\end{align}
+where $\phi_{ref}$ is either an exact solution (when one is available) or a
+reference solution obtained with a fine mesh size $h$ and large truncation
+parameter $\ell$. 
 
-In our first example, we consider the semi-infinite domain $\R^+ \times [-d,0]$,
+\subsection{Wavemaker}
+
+In our first examples, we consider the semi-infinite domain $\R^+ \times [-d,0]$,
 and impose a Neumann boundary condition on the $\Gamma_l = \{ 0 \} \times
 [0,-h]$ curve corresponding to the Neumann trace of the modal solution
 \begin{align}
   \phi(x_1,x_2) = \frac{\cosh(k(x_2+d))}{\cosh(kd)} e^{i k x_1} + \cos(\gamma_1(x_2+d)) e^{-\gamma_1 x_1},
 \end{align}
 where the first term represents a right-going (propagative) wave and the second
-term is an evanescent mode. 
-
-The depth $d$ is taken to be $1$, which yields $k \approx 1.2$ and
-$\gamma_1=2.8$. 
-
-From the
-modal decomposition~\cref{eq:modaldecomp}, we know that
+term is an evanescent mode. From the modal decomposition~\cref{eq:modaldecomp},
+we know that
 \begin{align}
   \varphi(x_1,x_2) = A_0^+u_0(x_2)e^{ik(x_1)} + \sum_{n\geq 1}A_n^+u_n(x_2)e^{-\gamma_n(x_1)},
 \end{align}
@@ -803,8 +808,8 @@ As the depth is increased, we observe a change in the convergence behavior:
     \label{fig:convergence-modal-solution-depth-3}
   \end{subfigure}
   \begin{subfigure}{0.49\linewidth}
-    \includegraphics[width=1\textwidth]{figures/convergence_pml_planewave_depth_3.pdf}
-    \caption{Depth $d=3$, corresponding to $k \approx 1$, $\gamma_1 \approx 0.73$}
+    \includegraphics[width=1\textwidth]{figures/convergence_pml_planewave_depth_4.pdf}
+    \caption{Depth $d=4$, corresponding to $k \approx 1$, $\gamma_1 \approx 0.510$}
     \label{fig:convergence-modal-solution-depth-4}
   \end{subfigure}
   \label{fig:convergence-modal-solution}
@@ -820,7 +825,7 @@ With the real stretching, we can recover the expected convergence rate
 of~\cref{fig:convergence-modal-solution-depth-4}
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{figures/convergence_pml_stretching_planewave_depth_4.pdf}
+  \includegraphics[width=0.5\textwidth]{figures/convergence_pml_stretching_planewave_vary_depth.pdf}
   \caption{Convergence of modal solution with a stretching layer of length $\lambda$ and strength $d$ located after the PML to damp the evanescent mode. }
   \label{fig:pml-convergence-stretching-depth-4}
 \end{figure}
@@ -841,13 +846,99 @@ in~\cref{sec:singular-integration}, the expected convergence order is $()$
 \begin{figure}
   \centering
   \includegraphics[width=0.5\textwidth]{figures/modal_convergence_meshsize_depth_1.pdf}
-  \caption{Convergence to the modal solution as the number of points per wavelength is increased. The }
+  \caption{Convergence to the modal solution as the number of points per
+  wavelength is increased for two different $n$-point Gauss-Legendre
+  quadratures. The expected convergence rate described
+  in~\cref{sec:singular-integration} is recovered.}
   \label{fig:mesh-convergence}
 \end{figure}
 
 \subsection{Scattering problem}
 
+After having validated the proposed algorithm and its implementation in the
+previous sections, we focus now on the classical scattering problem. For that
+purpose, we consider an incident field given by 
+\begin{align}
+  \phi^{inc}(x_1,x_2) = \frac{\cosh(k(x_2+d))}{\cosh(kd)} e^{i k x_1}.
+\end{align}
+Writing the total field as 
+\begin{align}
+  \phi^{tot} = \phi^{inc} + \phi,
+\end{align}
+where $\phi$ denotes the scattered field, it follows that $\phi$
+satisfies~\cref{eq:water-waves-system} with $f_1 = 0$ and $f_2 = -\nabla \phi
+\cdot \bn$; i.e. the following boundary condition
+\begin{align}
+  \phi = - \nabla \phi^{inc} \cdot \bn, \quad \bx \in \Gamma_o
+\end{align}
+Unlike in the previous section, an exact solution is no longer available,
+so we resort instead to a self-convergence test. In more detail, we place $100$
+points around the obstacle, and compute the following error in the approximation:
+\begin{align}
+  E_h = \max_{1 \leq n \leq 1} |\phi_h(\bx_n) - \phi_{h_{min}}(\bx_n) |
+\end{align}
+where $h_{min} = ??$ in all tests that follow, corresponding to a density of
+$??$ points-per-wavelength
 
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{figures/scattering_convergence_meshsize_depth_4.pdf}
+  \caption{Self-convergence as the number of points per
+  wavelength is increased for three different $n$-point Gauss-Legendre
+  quadratures. The expected convergence rate described
+  in~\cref{sec:singular-integration} is recovered.}
+  \label{fig:scattering-convergence}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/scattered_field_contour_depth_4.pdf}
+  \caption{Scattered field for a circular obstacle of radius $1.5$.}
+  \label{fig:scattered-submerged-contour}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/inc_field_contour_depth_4.pdf}\\
+  \includegraphics[width=0.95\textwidth]{figures/total_field_contour_depth_4.pdf}
+  \caption{Incident and total field for scattering problem. A phase-shift is observed after the obstacle.}
+  \label{fig:total-incident-submerged-contour}
+\end{figure}
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/scattered_field_contour_pierncing_depth_4.pdf}
+  \caption{Scattered field for a circular obstacle of radius $1.5$.}
+  \label{fig:scattered-piercing-contour}
+\end{figure}
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/scattered_field_contour_two_pierncing_depth_4.pdf}
+  \caption{Scattered field for two piercing obstacles of radius $1.5$ separated by half a wavelength.}
+  \label{fig:scattered-two-piercing-contour}
+\end{figure}
+
+\subsection{Resonance modes}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\textwidth]{figures/eigenvalues_two_piercing_depth_4.pdf}
+  \caption{Eigenvalues associated with the two piercing semi-circles show
+  in~\cref{fig:scattered-two-piercing-contour}. The red cross shows an example
+  of a nearly resonant eigenvalue $\lambda$ with $\Re(\lambda) \approx 1.56$ and
+ $\Im(\lambda) \approx - 0.07$}
+  \label{fig:eigenvalues}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/eigenfunction_two_piercing_depth_4.pdf}
+  \caption{Eigenfunction associated with eigenvalue}
+  \label{fig:eigenfunction}
+\end{figure}
 
 \appendix
 
@@ -883,11 +974,12 @@ dependent only on the chosen change of variable $\btau$, to determine whether
 
 \section{Complex-scaled fundamental solution}\label{sec:fundamental-solution}
 
-We present a formal calculation to justify the fact that $\tilde{G}(\bx,\by) =G(\tau(\bx),\tau(\by))$ is the fundamental solution of
+In this section we provide a simple proof that $\tilde{G}(\bx,\by) =G(\tau(\bx),\tau(\by))$ is the fundamental solution of
 \begin{align}
   \nabla \cdot \left( \frac{1}{|J^{-1}|}J^{-1}(J^{-1})^t \nabla \tilde{G}(\bx,\by) \right) = \delta(\bx - \by),
-  \quad \mbox{for} \quad \bx \in \R^2,
+  \quad \mbox{for} \quad \bx \in \R^2.
 \end{align}
+
 
 % We now investigate the asymptotic behavior of $\tilde{R}(\bx,\by) =
 % R(\tau(\bx),\tau(\by))$ as $\by \to \bx$. First, we may write $\tau(\bx) -
