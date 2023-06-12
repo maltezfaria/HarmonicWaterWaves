@@ -163,7 +163,7 @@ function discretize!(tank::WaveTank;meshsize,qorder=9)
 end
 
 function assemble_operators!(tank::WaveTank;
-                            compression=:matrix,atol=1e-8,maxevals=20_000, initdiv = 1, maxdist = nothing)
+                            compression=:matrix,atol=1e-8,maxevals=2000, initdiv = 1, maxdist = nothing)
     m,n = size(tank.Sop)
     h = tank.parameters.meshsize
     isnothing(maxdist) && (maxdist = 5*h)
@@ -242,13 +242,17 @@ function solve_eigenvalues(tank)
     J_diag  = Diagonal([jacobian_det(τ,dof) for dof in dofs])
     S,D = tank.S, tank.D
     # solve Ax = λBx, with A = 0.5*|J|^{-1} + D
-    A   = 0.5*inv(J_diag) + D
+    A   = 0.5*inv(J_diag) - D
     Γ   = freesurface(tank)
     Is  = dom2qtags(quad,Γ) # index of dofs on free surface
     B   = zero(S)
     B[:,Is] = S[:,Is]
     @info "computing generalized eigenvalue decomposition"
-    return eigen(A,B)
+    t = @elapsed begin
+        F = eigen(A,B)
+    end
+    @info "|-- took $t seconds"
+    return F
 end
 
 function solve!(tank::WaveTank,f::Function)
