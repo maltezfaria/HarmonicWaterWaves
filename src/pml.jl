@@ -1,54 +1,5 @@
 """
-    OrthogonalLinearPML
-
-Change of variables given by `x̃ = a + im*c*(x-a)` for `x>a` and `x̃ = -a +
-im*c*(x+a)` for `x<-a`. For `-a ≤ x ≤ a`, `x̃ = x`.
-"""
-struct OrthogonalLinearPML
-    a::Float64
-    c::Float64
-end
-
-function OrthogonalLinearPML(;a,θ)
-    # OrthogonalLinearPML(a,exp(im*θ))
-    OrthogonalLinearPML(a,sin(θ))
-end
-
-function (f::OrthogonalLinearPML)(dof)
-    x   = coords(dof)
-    N   = length(x)
-    a,c = f.a,f.c
-    svector(N) do d
-        xd = x[d]
-        if d == N || abs(xd) <= a
-            ComplexF64(xd)
-        elseif xd > a
-            # a + (xd-a)*c
-            ComplexF64(xd + (xd-a)*c*im)
-        else
-            # -a + (xd+a)*c
-            ComplexF64(xd + (xd+a)*c*im)
-        end
-    end
-end
-
-function jacobian_det(f::OrthogonalLinearPML,dof)
-    x = coords(dof)
-    N = length(x)
-    a,c = f.a,f.c
-    prod(1:N-1) do d
-        xd = x[d]
-        # abs(xd) > a ? c : one(c)
-        abs(xd) > a ? 1+im*c : one(ComplexF64)
-    end
-end
-
-"""
     OrthogonalPML
-
-Change of variables given by `x̃ = a + im*c*(x-a)` for `a<x<a+b` and `x̃ = -a +
-im*c*(x+a)` for `-a-b<x<-a`. A real stretching is performed: `̃x = d*(x-b) + b`
-for `x>b` and `̃x = d*(x+b) - b` for `x<-b`.
 """
 @kwdef struct OrthogonalPML
     a::Float64
@@ -88,53 +39,7 @@ function jacobian_det(f::OrthogonalPML,dof)
     prod(1:N-1) do dim
         xd = x[dim]
         # abs(xd) > a ? c : one(c)
-        a < abs(xd) < b ? 1+im*c : abs(xd) >= b ? (ComplexF64(d + im*c)) : one(ComplexF64)
-    end
-end
-
-struct OrthogonalQuadraticPML
-    a::Float64
-    c::ComplexF64
-end
-
-function OrthogonalQuadraticPML(;a,θ)
-    OrthogonalQuadraticPML(a,exp(im*θ))
-end
-
-function (f::OrthogonalQuadraticPML)(dof)
-    x   = coords(dof)
-    N   = length(x)
-    a,c = f.a,f.c
-    svector(N) do d
-        xd = x[d]
-        if d == N || abs(xd) <= a
-            Complex(xd)
-        elseif xd > a
-            a + (xd-a)^2*c
-        else
-            -a - (xd-a)^2*c
-        end
-    end
-end
-
-function jacobian(f::OrthogonalQuadraticPML,dof)
-    a,c = f.a,f.c
-    x = coords(dof)
-    N = length(x)
-    diag = svector(N) do d
-        xd = x[d]
-        (d == N || xd <= a) ? one(c) : xd > a ? 2*(xd-a)*c : -2*(xd-a)*c
-    end
-    Diagonal(diag)
-end
-
-function jacobian_det(f::OrthogonalQuadraticPML,dof)
-    x = coords(dof)
-    N = length(x)
-    a,c = f.a,f.c
-    prod(1:N-1) do d
-        xd = x[d]
-        abs(xd) <= a ? one(c) : 2*(xd-a)*c
+        a < abs(xd) < b ? 1+im*c : abs(xd) >= b ? d + im*c : one(ComplexF64)
     end
 end
 
