@@ -1,4 +1,6 @@
 /Manifest.toml
+paper/figures/*
+paper/animations/*
 paper/logs/*
 .vscode/ltex.dictionary.en-US.txt
 *.code-workspace
