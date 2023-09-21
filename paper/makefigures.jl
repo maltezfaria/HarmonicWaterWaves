@@ -2,22 +2,22 @@ using Pkg
 using Logging
 
 dir_paper = @__DIR__
-Pkg.activate(joinpath(dir_paper,"."))
+Pkg.activate(joinpath(dir_paper, "."))
 Pkg.instantiate()
 
-dir_scripts = joinpath(dir_paper,"scripts")
-dir_logs    = joinpath(dir_paper,"logs")
-dir_figures = joinpath(dir_paper,"figures")
-dir_animations = joinpath(dir_paper,"animations")
+dir_scripts = joinpath(dir_paper, "scripts")
+dir_logs = joinpath(dir_paper, "logs")
+dir_figures = joinpath(dir_paper, "figures")
+dir_animations = joinpath(dir_paper, "animations")
 
 # cleanup figures, logs, and animations
 for file in readdir(dir_figures)
     if file != "WW_problem.pdf"
-        rm(joinpath(dir_figures,file))
+        rm(joinpath(dir_figures, file))
     end
 end
-foreach(file->rm(joinpath(dir_logs,file)),readdir(dir_logs))
-foreach(file->rm(joinpath(dir_animations,file)),readdir(dir_logs))
+foreach(file -> rm(joinpath(dir_logs, file)), readdir(dir_logs))
+foreach(file -> rm(joinpath(dir_animations, file)), readdir(dir_logs))
 
 # map script file to figure file
 script2fig = Dict(
@@ -35,19 +35,18 @@ script2fig = Dict(
     "double_piercing_eigenvalue.jl" => "fig11",
 )
 
-
 # generate all figures
-for (file,fig) in script2fig
+for (file, fig) in script2fig
     @info "Executing $file to generate $fig"
-    full_path = joinpath(dir_scripts,file)
-    log_file  = joinpath(dir_logs,"$(fig).log")
+    full_path = joinpath(dir_scripts, file)
+    log_file  = joinpath(dir_logs, "$(fig).log")
     io        = open(log_file, "w+")
-    logger = ConsoleLogger(io)
+    logger    = ConsoleLogger(io)
     # wrap each include around a module to avoid namespace pollution and
     # conflicts
     with_logger(logger) do
         @eval module $(gensym(file))
-            include($full_path)
+        include($full_path)
         end
     end
     flush(io)

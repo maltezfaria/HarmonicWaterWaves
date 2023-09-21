@@ -15,7 +15,7 @@ Base.@kwdef mutable struct WaveTank
     lengthscale::typeof(1.0u"m") = depth
     # mesh parameters
     meshsize::Union{Float64,Dict} = Inf
-    qorder::Int       = 0
+    qorder::Int = 0
     # pml change of variables
     pml_func = nothing
     # discretized fields
@@ -35,7 +35,7 @@ depth(p::WaveTank) = p.depth
 lengthscale(p::WaveTank) = p.lengthscale
 
 function Base.empty!(tank::WaveTank)
-    (tank.freesurface = Domain(); tank.bottom = Domain(); tank.obstacles = Domain())
+    return (tank.freesurface = Domain(); tank.bottom = Domain(); tank.obstacles = Domain())
 end
 
 """
@@ -276,7 +276,7 @@ function solve!(tank::WaveTank, f::AbstractVector, method = :gmres)
     τ      = pml(tank)
     dofs   = quadrature(tank).qnodes
     ν      = impedance(tank)
-    J_diag = Diagonal([jacobian_det(τ, dof) for dof ∈ dofs])
+    J_diag = Diagonal([jacobian_det(τ, dof) for dof in dofs])
     J_diag * f ≈ f || @warn("source term does not vanish inside the PML")
     S, D = tank.S, tank.D
     rhs = S * (J_diag * f)
@@ -319,7 +319,7 @@ function solve_eigenvalues(tank)
     quad   = quadrature(tank)
     τ      = pml(tank)
     dofs   = quadrature(tank).qnodes
-    J_diag = Diagonal([jacobian_det(τ, dof) for dof ∈ dofs])
+    J_diag = Diagonal([jacobian_det(τ, dof) for dof in dofs])
     S, D   = tank.S, tank.D
     # solve Ax = λBx, with A = 0.5*|J|^{-1} + D
     A = 0.5 * inv(J_diag) - D
@@ -337,7 +337,7 @@ end
 
 function solve!(tank::WaveTank, f::Function)
     quad = quadrature(tank)
-    return solve!(tank, [f(dof) for dof ∈ quad.qnodes])
+    return solve!(tank, [f(dof) for dof in quad.qnodes])
 end
 
 function solution(tank)
@@ -350,7 +350,7 @@ function solution(tank)
     Γ = freesurface(tank)
     Is = dom2qtags(quad, Γ) # index of dofs on free surface
     τ = pml(tank)
-    J_diag = Diagonal([jacobian_det(τ, dof) for dof ∈ dofs])
+    J_diag = Diagonal([jacobian_det(τ, dof) for dof in dofs])
     f′ = J_diag * f
     σ = tank.σ
     @. f′[Is] -= k * σ[Is] # f - ω²/g |J| φ

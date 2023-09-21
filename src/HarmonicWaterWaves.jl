@@ -1,6 +1,6 @@
 module HarmonicWaterWaves
 
-const PROJECT_ROOT =  pkgdir(HarmonicWaterWaves)
+const PROJECT_ROOT = pkgdir(HarmonicWaterWaves)
 
 using LinearAlgebra
 using Roots
@@ -15,7 +15,9 @@ import WavePropBase as WPB
 
 # TODO: make a PR to SpecialFunctions to support complex expinti?
 import SpecialFunctions
-SpecialFunctions.expinti(z::Complex) = -SpecialFunctions.expint(-z) - sign(angle(-z))*im*π
+function SpecialFunctions.expinti(z::Complex)
+    return -SpecialFunctions.expint(-z) - sign(angle(-z)) * im * π
+end
 
 import WavePropBase:
     Domain,
