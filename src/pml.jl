@@ -2,16 +2,16 @@
     OrthogonalPML
 """
 @kwdef struct OrthogonalPML
-    a::Float64
-    b::Float64 = Inf
-    c::Float64 = 1
-    d::Float64 = 1
+    pml_start::Float64
+    stretch_start::Float64 = Inf
+    pml_strength::Float64 = 1
+    stretch_strength::Float64 = 1
 end
 
 function (f::OrthogonalPML)(dof)
     x   = coords(dof)
     N   = length(x)
-    (;a,b,c,d) = f
+    a,b,c,d = f.pml_start,f.stretch_start,f.pml_strength,f.stretch_strength
     svector(N) do dim
         xd = x[dim]
         if dim == N
@@ -22,9 +22,9 @@ function (f::OrthogonalPML)(dof)
             elseif xd < -a && xd > -b
                 ComplexF64(xd + (xd+a)*c*im)
             elseif xd >= b
-                ComplexF64(d*(xd-b) + b + (xd-a)*c*im)
+                ComplexF64(d*(xd-b) + d*(xd-b)*c*im + b + (b-a)*c*im)
             elseif xd <= -b
-                ComplexF64(d*(xd+b) - b + (xd+a)*c*im)
+                ComplexF64(d*(xd+b) + d*(xd+b)*c*im - b - (b-a)*c*im)
             else
                 ComplexF64(xd)
             end
@@ -35,11 +35,11 @@ end
 function jacobian_det(f::OrthogonalPML,dof)
     x = coords(dof)
     N = length(x)
-    (;a,b,c,d) = f
+    a,b,c,d = f.pml_start,f.stretch_start,f.pml_strength,f.stretch_strength
     prod(1:N-1) do dim
         xd = x[dim]
         # abs(xd) > a ? c : one(c)
-        a < abs(xd) < b ? 1+im*c : abs(xd) >= b ? d + im*c : one(ComplexF64)
+        a < abs(xd) < b ? 1+im*c : abs(xd) >= b ? d + d*im*c : one(ComplexF64)
     end
 end
 
@@ -97,65 +97,8 @@ function (DL::DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplacePML}
     end
 end
 
-struct LaplaceSymPML{N,S} <: AbstractPDE{N}
-    complex_strecthing::S
-end
-
-LaplaceSymPML(;dim=2,τ) = LaplaceSymPML{dim,typeof(τ)}(τ)
-
-getname(::LaplaceSymPML) = "LaplaceSymPML"
-
-default_kernel_eltype(::LaplaceSymPML)  = ComplexF64
-default_density_eltype(::LaplaceSymPML) = ComplexF64
-
-complex_strecthing(op::LaplaceSymPML) = op.complex_strecthing
-
-function (SL::SingleLayerKernel{T,S})(target,source)::T  where {T,S<:LaplaceSymPML}
-    x = coords(target)
-    y = coords(source)
-    N = ambient_dimension(SL.pde)
-    τ = SL.pde.complex_strecthing
-    x̃ = τ(x)
-    ỹ = τ(y)
-    x̄ = setindex(x̃,-x̃[N],N) # image across surface
-    r = x̃ - ỹ
-    r̄ = x̄ - ỹ
-    d = sqrt(transpose(r)*r)
-    d̄ = sqrt(transpose(r̄)*r̄)
-    d==0 && (return zero(T))
-    if N==2
-        return -1/(2π)*(log(d) - log(d̄))
-    elseif N==3
-        return 1/(4π)/d
-    else
-        notimplemented()
-    end
-end
-
-function (DL::DoubleLayerKernel{T,S})(target,source)::T where {T,S<:LaplaceSymPML}
-    x,y,ny = coords(target), coords(source), normal(source)
-    N  = ambient_dimension(DL.pde)
-    τ  = DL.pde.complex_strecthing
-    x̃  = τ(x)
-    ỹ  = τ(y)
-    x̄ = setindex(x̃,-x̃[N],N) # image across surface
-    r  = x̃ - ỹ
-    d  = sqrt(transpose(r)*r)
-    r̄ = x̄ - ỹ
-    d̄ = sqrt(transpose(r̄)*r̄)
-    d == 0 && (return zero(T))
-    if N==2
-        return 1/(2π)/(d^2) * transpose(r)*ny - 1/(2π)/(d̄^2) * transpose(r̄)*ny
-    elseif N==3
-        return 1/(4π)/(d^3) * transpose(r)*ny
-    else
-        notimplemented()
-    end
-end
-
-
 #=
-    Infinite depth two-dimensional water wave Gree function
+    Infinite depth two-dimensional water wave Green function
 =#
 struct InfiniteDepthWaterWaves{N,S} <: AbstractPDE{N}
     k::S # ω²/g

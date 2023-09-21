@@ -4,11 +4,14 @@ const PROJECT_ROOT =  pkgdir(HarmonicWaterWaves)
 
 using LinearAlgebra
 using Roots
-using RecipesBase
 using StaticArrays
 using LinearMaps
 using SparseArrays
 using IterativeSolvers
+using CairoMakie
+using Unitful
+
+import WavePropBase as WPB
 
 # TODO: make a PR to SpecialFunctions to support complex expinti?
 import SpecialFunctions
@@ -35,15 +38,16 @@ import WavePropBase:
     NystromMesh,
     Laplace,
     dom2qtags,
+    hcubature_correction,
     SingleLayerOperator,
     DoubleLayerOperator,
-    hcubature_correction,
     NystromDensity,
     IntegralPotential
 
 include("pml.jl")
-include("parameters.jl")
 include("wavetank.jl")
+include("geometries.jl")
+include("makietheme.jl")
 
 # export
 

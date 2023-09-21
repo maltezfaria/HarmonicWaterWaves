@@ -1,0 +1,8 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
+HarmonicWaterWaves = "a3ee3193-1981-4264-b11d-3851cf0eb115"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+WavePropBase = "91c5bd54-65f5-4719-ae3b-9579edfc4a0b"

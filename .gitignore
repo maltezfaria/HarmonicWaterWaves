@@ -1,4 +1,6 @@
 /Manifest.toml
+paper/figures/*
+paper/tex/*
 *.gif
 *.png
 old/**
