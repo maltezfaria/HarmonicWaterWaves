@@ -9,7 +9,7 @@ To add this package, type the following code on a Julia REPL:
 
 ```julia
 using Pkg
-Pkg.add("https://github.com/maltezfaria/HarmonicWaterWaves.git")
+Pkg.add(url="https://github.com/maltezfaria/HarmonicWaterWaves.git",rev=v"main")
 ```
 
 ## Usage
@@ -21,14 +21,18 @@ on a terminal from the root of this repository to regenerate all the figures
 presented in the paper:
 
 ```bash
-julia --project=paper paper/makefigures.jl
+julia --project=paper -e 'using Pkg; Pkg.instantiate(); include("paper/makefigures.jl")'
 ```
+
+**:warning: Because of some (heavy) plotting dependencies that need to be downloaded and
+precompiled, the lines above may take some time the first time you run it.**
 
 This will repopulate the [figures](paper/figure) and [animations](paper/animations) folders.
 If you have a working `LaTex` installation, you can recompile the
 [`paper/tex/water-waves-pml.tex`](paper/tex/water-waves-pml.tex) file to produce the final
-`.pdf`. Below is an example of the results produced.
+`.pdf`. Below is an example of the results produced (see the paper for more
+details).
 
-Obstacle scattering            |  Step scattering
-:-------------------------:|:-------------------------:
-![](jellyfish_fields.gif)  |  ![](step_animation.gif)
+|      Obstacle scattering       |       Step scattering       |
+| :----------------------------: | :-------------------------: |
+| ![jelly](jellyfish_fields.gif) | ![step](step_animation.gif) |
