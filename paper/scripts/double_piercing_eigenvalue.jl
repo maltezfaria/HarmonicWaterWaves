@@ -15,8 +15,8 @@ r = 0.25 # radius of obstacles
 
 λ = HWW.wavelength(tank)
 
-pml_start  = δ / 2 + r + λ
-pml_length = λ
+pml_start  = 2.5
+pml_length = 2.5
 domain_end = pml_start + pml_length
 
 # add pml
@@ -55,7 +55,7 @@ HWW.add_bottom!(tank, pml_start, domain_end)
 # set a non-uniform mesh size
 ppw = 50
 P = 5
-meshsize = P * λ / ppw
+meshsize = 0.2
 
 # create mesh
 HWW.discretize!(tank; meshsize, order = P)
@@ -159,6 +159,7 @@ rowgap!(fig.layout, 10)
 colgap!(fig.layout, 10)
 
 # remesh for plotting the obstacles
+HWW.discretize!(tank; meshsize = 0.01, order = :low) # remesh for plotting the obstacles
 lines!(ax1, tank.mesh)
 
 save("paper/figures/eigenvalue_problem.pdf", fig)
