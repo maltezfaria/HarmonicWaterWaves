@@ -3,24 +3,19 @@
 *Boundary integral equation methods for solving time-harmonic water waves in
 Julia*
 
-## Installing
-
-To add this package, type the following code on a Julia REPL:
-
-```julia
-using Pkg
-Pkg.add(url="https://github.com/maltezfaria/HarmonicWaterWaves.git",rev=v"main")
-```
-
 ## Usage
 
 Currently, this package is only intended as a reproducibility repository for the
-paper [*Complex-scaled boundary integral equation for
-time-harmonicwaterwaves*](paper/tex/water-waves-pml.pdf). Run the following code
-on a terminal from the root of this repository to regenerate all the figures
-presented in the paper:
+paper [*Complex-scaled boundary integral equation for time-harmonic water
+waves*](paper/tex/water-waves-pml.pdf). It requires installing [`julia`](https://julialang.org/downloads/),
+version `1.9`.
+
+Run the following code on a terminal to download the repository and regenerate
+all the figures presented in the paper (you must have `git` installed):
 
 ```bash
+git clone https://github.com/maltezfaria/HarmonicWaterWaves.git
+cd ./HarmonicWaterWaves
 julia --project=paper -e 'using Pkg; Pkg.instantiate(); include("paper/makefigures.jl")'
 ```
 
