@@ -15,15 +15,6 @@ dir_logs = joinpath(dir_paper, "logs")
 dir_figures = joinpath(dir_paper, "figures")
 dir_animations = joinpath(dir_paper, "animations")
 
-# cleanup figures, logs, and animations
-for file in readdir(dir_figures)
-    if file != "WW_problem.pdf"
-        rm(joinpath(dir_figures, file))
-    end
-end
-foreach(file -> rm(joinpath(dir_logs, file)), readdir(dir_logs))
-foreach(file -> rm(joinpath(dir_animations, file)), readdir(dir_logs))
-
 # map script file to figure file
 script2fig = Dict(
     "wavemaker_solution.jl" => "fig2a",

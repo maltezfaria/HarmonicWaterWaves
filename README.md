@@ -15,8 +15,8 @@ all the figures presented in the paper (you must have `git` installed):
 
 ```bash
 git clone https://github.com/maltezfaria/HarmonicWaterWaves.git
-cd ./HarmonicWaterWaves
-julia --project=paper -e 'using Pkg; Pkg.instantiate(); include("paper/makefigures.jl")'
+cd HarmonicWaterWaves
+julia paper/makefigures.jl
 ```
 
 **:warning: Because of some (heavy) plotting dependencies that need to be downloaded and
