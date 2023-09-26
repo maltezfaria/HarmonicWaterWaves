@@ -6,6 +6,10 @@ Pkg.activate(joinpath(dir_paper, "."))
 Pkg.instantiate()
 
 dir_scripts = joinpath(dir_paper, "scripts")
+
+isdir(joinpath(dir_paper, "logs")) || mkdir(joinpath(dir_paper, "logs"))
+isdir(joinpath(dir_paper, "figures")) || mkdir(joinpath(dir_paper, "figures"))
+
 dir_logs = joinpath(dir_paper, "logs")
 dir_figures = joinpath(dir_paper, "figures")
 dir_animations = joinpath(dir_paper, "animations")
