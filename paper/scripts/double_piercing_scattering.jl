@@ -193,7 +193,7 @@ cb = Colorbar(
     limits = (cmin, cmax),
     height = Relative(0.6),
     width = 10,
-    label = L"\Re(\tilde{\varphi})",
+    # label = L"\Re(\tilde{\varphi})",
 )
 
 rowgap!(fig.layout, -70)

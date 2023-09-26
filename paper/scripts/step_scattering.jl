@@ -129,6 +129,7 @@ ax2 = Axis(
     yminorticksvisible = false,
     topspinevisible = false,
     xticklabelsvisible = false,
+    # add a title
 )
 h2 = heatmap!(
     ax2,
@@ -181,13 +182,14 @@ cb = Colorbar(
     limits = (cmin, cmax),
     height = Relative(0.75),
     width = 10,
-    label = L"\Re(\tilde{\varphi})",
+    # label = L"\Re(\tilde{\varphi})",
 )
 
 rowgap!(fig.layout, -30)
 colgap!(fig.layout, 10)
 
 save("paper/figures/step_fields.pdf", fig)
+fig
 
 ##
 if make_animation
