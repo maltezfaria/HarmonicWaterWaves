@@ -105,7 +105,7 @@ ax  = Axis(fig[1, 1]; xscale = log10, yscale = log10, xticks = ppws, xminorticks
 scatterlines!(ax, ppws[1:end-1], ee; label = L"P = %$P")
 ref = 1 ./ ppws[1:end-1] .^ (big(P))
 iref = length(ppws) - 1
-lines!(ax, ppws[1:end-1], ee[iref] / ref[iref] * ref; label = nothing, linestyle = :dash)
+lines!(ax, ppws[1:end-1], ee[iref] / ref[iref] * ref; label = L"\mathcal{O}(h^{-%$P})", linestyle = :dash)
 # ylims!(ax,1e-12,1)
 xlims!(ax, first(ppws), ppws[end-1])
 axislegend(ax; position = :rt)

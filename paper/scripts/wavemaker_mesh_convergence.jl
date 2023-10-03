@@ -68,7 +68,7 @@ for (i, P) in enumerate(PP)
     scatterlines!(ax, ppws, vals; label = "P = $P")
     ref = 1 ./ ppws .^ (big(P))
     iref = P == 10 ? 4 : length(ppws) - 1
-    lines!(ax, ppws, vals[iref] / ref[iref] * ref; label = nothing, linestyle = :dash)
+    lines!(ax, ppws, vals[iref] / ref[iref] * ref; label = L"\mathcal{O}(h^{-%$P})", linestyle = :dash)
 end
 ylims!(ax, 1e-12, 1)
 axislegend(ax; position = :lb)
