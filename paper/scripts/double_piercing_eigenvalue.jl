@@ -4,8 +4,6 @@ import WavePropBase as WPB
 import HarmonicWaterWaves as HWW
 using Unitful
 
-make_animation = true
-
 ν     = 4
 depth = 1 * u"m"
 tank  = HWW.WaveTank(; depth, frequency = sqrt(ν) * u"Hz", gravity = 1 * u"m/s^2")
