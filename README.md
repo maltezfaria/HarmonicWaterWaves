@@ -16,6 +16,7 @@ all the figures presented in the paper (you must have `git` installed):
 ```bash
 git clone https://github.com/maltezfaria/HarmonicWaterWaves.git
 cd HarmonicWaterWaves
+git checkout v0.1
 julia paper/makefigures.jl
 ```
 
