@@ -7,7 +7,7 @@ Julia*
 
 Currently, this package is only intended as a reproducibility repository for the
 paper [*Complex-scaled boundary integral equation for time-harmonic water
-waves*](paper/main.pdf). It requires installing [`julia`](https://julialang.org/downloads/),
+waves*](https://arxiv.org/pdf/2310.04127.pdf). It requires installing [`julia`](https://julialang.org/downloads/),
 version `1.9`.
 
 Run the following code on a terminal to download the repository and regenerate
