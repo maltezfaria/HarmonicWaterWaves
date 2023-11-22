@@ -18,7 +18,7 @@ WavePropBase = "91c5bd54-65f5-4719-ae3b-9579edfc4a0b"
 
 [compat]
 Aqua = "0.7"
-CairoMakie = "0.10"
+CairoMakie = "0.10, 0.11"
 IterativeSolvers = "0.9"
 LinearMaps = "3"
 Roots = "2"
